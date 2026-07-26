@@ -29,7 +29,7 @@ export default function AuthScreen({ onSuccess, apiOnline }: Props) {
         onSuccess(res.user);
       } else {
         if (!name.trim()) throw new Error('Nom requis');
-        if (password.length < 6) throw new Error('Mot de passe : 6 caractères minimum');
+        if (password.length < 8) throw new Error('Mot de passe : 8 caractères minimum');
         const res = await register(name.trim(), tag.trim(), password);
         onSuccess(res.user);
       }
@@ -77,7 +77,7 @@ export default function AuthScreen({ onSuccess, apiOnline }: Props) {
           </p>
         )}
         {apiOnline === true && (
-          <p className="text-emerald-400/80 text-[10px] font-mono">API connectée · localhost:3001</p>
+          <p className="text-emerald-400/80 text-[10px] font-mono">API connectée</p>
         )}
       </div>
 
