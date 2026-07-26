@@ -1209,8 +1209,8 @@ export default function VersusApp() {
                                   }
                                 </div>
                                 {/* Avatar */}
-                                <img src={p.avatar} className="w-8 h-8 rounded-xl object-cover shrink-0 ring-1"
-                                  style={{ ringColor: isMe ? activeCat.catColor : 'transparent', outline: isMe ? `1.5px solid ${activeCat.catColor}` : undefined }}
+                                <img src={p.avatar} className="w-8 h-8 rounded-xl object-cover shrink-0"
+                                  style={{ boxShadow: isMe ? `0 0 0 1.5px ${activeCat.catColor}` : undefined }}
                                   alt={p.name} />
                                 {/* Name */}
                                 <div className="flex-1 min-w-0">

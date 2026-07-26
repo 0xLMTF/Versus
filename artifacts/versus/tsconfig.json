@@ -8,6 +8,7 @@
     "lib": ["esnext", "dom", "dom.iterable"],
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
+    "module": "esnext",
     "moduleResolution": "bundler",
     "types": ["node", "vite/client"],
     "paths": {

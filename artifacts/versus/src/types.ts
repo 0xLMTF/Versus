@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 export type ThemeColor = {
   id: string;
   name: string;
@@ -7,6 +9,7 @@ export type ThemeColor = {
 export type Game = {
   id: string;
   name: string;
+  desc?: string;
 };
 
 export type Category = {
@@ -14,6 +17,7 @@ export type Category = {
   name: string;
   icon: string;
   catColor: string;
+  desc?: string;
   games: Game[];
 };
 

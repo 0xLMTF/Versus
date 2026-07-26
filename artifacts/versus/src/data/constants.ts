@@ -18,10 +18,10 @@ export const CATEGORIES: Category[] = [
     icon: '⚽',
     catColor: '#F43F5E',
     games: [
-      { id: 'g_padel', name: 'Padel Tennis' },
-      { id: 'g_tt', name: 'Tennis de Table' },
-      { id: 'g_foot5', name: 'Foot à 5 (Urban)' },
-      { id: 'g_badminton', name: 'Badminton' },
+      { id: 'g_padel', name: 'Padel Tennis', desc: 'Duel sportif rapide en raquette' },
+      { id: 'g_tt', name: 'Tennis de Table', desc: 'Précision et réflexes autour de la table' },
+      { id: 'g_foot5', name: 'Foot à 5 (Urban)', desc: 'Match de football en équipe réduite' },
+      { id: 'g_badminton', name: 'Badminton', desc: 'Vitesse et précision avec volant' },
     ],
   },
   {
@@ -30,10 +30,10 @@ export const CATEGORIES: Category[] = [
     icon: '🎯',
     catColor: '#F59E0B',
     games: [
-      { id: 'g_darts', name: 'Fléchettes 501' },
-      { id: 'g_bowling', name: 'Bowling' },
-      { id: 'g_billiard', name: 'Billard Américain' },
-      { id: 'g_molkky', name: 'Mölkky' },
+      { id: 'g_darts', name: 'Fléchettes 501', desc: 'Atteins la cible avec précision' },
+      { id: 'g_bowling', name: 'Bowling', desc: 'Fais tomber un maximum de quilles' },
+      { id: 'g_billiard', name: 'Billard Américain', desc: 'Maîtrise les angles et les effets' },
+      { id: 'g_molkky', name: 'Mölkky', desc: 'Jeu de précision en plein air' },
     ],
   },
   {
@@ -42,9 +42,9 @@ export const CATEGORIES: Category[] = [
     icon: '🧠',
     catColor: '#8B5CF6',
     games: [
-      { id: 'g_chess', name: 'Échecs Blitz 5min' },
-      { id: 'g_poker', name: "Poker Hold'em" },
-      { id: 'g_blindtest', name: 'Blind Test Musical' },
+      { id: 'g_chess', name: 'Échecs Blitz 5min', desc: 'Affronte ton adversaire sous pression' },
+      { id: 'g_poker', name: "Poker Hold'em", desc: 'Stratégie, bluff et lecture du jeu' },
+      { id: 'g_blindtest', name: 'Blind Test Musical', desc: 'Teste ta culture musicale' },
     ],
   },
   {
@@ -53,11 +53,11 @@ export const CATEGORIES: Category[] = [
     icon: '🎮',
     catColor: '#00F2FE',
     games: [
-      { id: 'g_mk8', name: 'Mario Kart 8 Deluxe' },
-      { id: 'g_fc26', name: 'EA Sports FC 26' },
-      { id: 'g_smash', name: 'Super Smash Bros Ultimate' },
-      { id: 'g_rl', name: 'Rocket League' },
-      { id: 'g_tekken', name: 'Tekken 8' },
+      { id: 'g_mk8', name: 'Mario Kart 8 Deluxe', desc: 'Course arcade et objets chaotiques' },
+      { id: 'g_fc26', name: 'EA Sports FC 26', desc: 'Affronte tes amis sur le terrain' },
+      { id: 'g_smash', name: 'Super Smash Bros Ultimate', desc: 'Combat avec des personnages légendaires' },
+      { id: 'g_rl', name: 'Rocket League', desc: 'Football automobile compétitif' },
+      { id: 'g_tekken', name: 'Tekken 8', desc: 'Combat en duel technique' },
     ],
   },
 ];
