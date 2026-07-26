@@ -29,6 +29,19 @@ const users = [
     theme_color: "#ff00ff",
     avatar_url: null,
   },
+  {
+  id: "3",
+  name: "Hugo",
+  tag: "@hugo_fast",
+  password: "versus123",
+  role: "USER",
+  elo: 1850,
+  wins: 30,
+  losses: 25,
+  streak: 2,
+  theme_color: "#ff00ff",
+  avatar_url: null,
+ },
 ];
 
 router.post("/auth/login", (req, res) => {
