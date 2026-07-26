@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "VERSUS - Competitive Gaming Tracker"
+version = "1.0.0"
+id = "artifacts/versus"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19770
+
+[services.development]
+run = "pnpm --filter @workspace/versus run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/versus", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/versus/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19770"
+BASE_PATH = "/"

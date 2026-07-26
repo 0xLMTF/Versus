@@ -1,0 +1,29 @@
+{
+  "name": "versus",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Versus — competitive social tracker for friends (rivalries, leagues, cups)",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "preinstall": "node scripts/check-package-manager.mjs",
+    "dev": "pnpm run dev:all",
+    "dev:web": "pnpm --filter @workspace/versus dev",
+    "dev:api": "pnpm --filter versus-backend dev",
+    "dev:all": "node scripts/dev.mjs",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "db:init": "pnpm --filter versus-backend db:init",
+    "db:seed": "pnpm --filter versus-backend db:seed",
+    "setup": "pnpm install && pnpm --filter versus-backend db:init",
+    "smoke": "node scripts/smoke-api.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.5",
+    "typescript": "~5.9.3"
+  }
+}

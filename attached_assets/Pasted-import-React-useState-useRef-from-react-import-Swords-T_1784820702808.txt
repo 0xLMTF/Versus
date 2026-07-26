@@ -1,0 +1,1590 @@
+import React, { useState, useRef } from 'react';
+import { 
+  Swords, 
+  Trophy, 
+  Users, 
+  Flame, 
+  ShieldAlert, 
+  CheckCircle2, 
+  XCircle, 
+  Plus, 
+  Medal, 
+  TrendingUp, 
+  Zap, 
+  Sparkles, 
+  Award, 
+  ChevronRight, 
+  History, 
+  BarChart3, 
+  Share2, 
+  Bell, 
+  User, 
+  Crown,
+  X,
+  Target,
+  Calendar,
+  Layers,
+  ChevronLeft,
+  Moon,
+  AlertTriangle,
+  HelpCircle,
+  Clock,
+  PieChart,
+  UserPlus,
+  Key,
+  Copy,
+  Check,
+  Camera,
+  FileText,
+  Sliders,
+  Play,
+  RotateCcw,
+  CheckSquare,
+  CornerUpRight,
+  LogOut,
+  ShieldCheck,
+  Grid,
+  Gamepad2,
+  Activity,
+  Brain,
+  Crosshair,
+  Dumbbell,
+  Settings,
+  Edit3,
+  Search,
+  CheckCircle,
+  BarChart2,
+  Lock,
+  Star,
+  Trash2,
+  Filter,
+  Palette,
+  Image as ImageIcon,
+  ArrowUpRight,
+  TrendingDown,
+  Upload,
+  UserCheck,
+  Mail,
+  MessageSquare,
+  Globe,
+  LogIn,
+  Eye,
+  CheckSquare2
+} from 'lucide-react';
+
+// --- COULEURS DE THÈME JOUEUR ---
+const USER_THEME_COLORS = [
+  { id: 'cyan', name: 'Cyan Cyber', hex: '#00F2FE' },
+  { id: 'fuchsia', name: 'Rose Néon', hex: '#F000FF' },
+  { id: 'emerald', name: 'Vert Émeraude', hex: '#10B981' },
+  { id: 'amber', name: 'Or Solaire', hex: '#F59E0B' },
+  { id: 'purple', name: 'Violet Royal', hex: '#8B5CF6' },
+  { id: 'rose', name: 'Rouge Brasier', hex: '#F43F5E' },
+  { id: 'lime', name: 'Vert Lime', hex: '#84CC16' },
+  { id: 'orange', name: 'Orange Volt', hex: '#FF6B00' }
+];
+
+// --- JEUX AUTORISÉS & CATÉGORIES ---
+const INITIAL_CATEGORIES = [
+  {
+    id: 'sports',
+    name: 'Physique & Sport',
+    icon: '⚽',
+    desc: 'Padel, Tennis de Table, Foot 5...',
+    games: [
+      { id: 'g_padel', name: 'Padel Tennis' },
+      { id: 'g_tt', name: 'Tennis de Table' },
+      { id: 'g_foot5', name: 'Foot à 5 (Urban)' },
+      { id: 'g_badminton', name: 'Badminton' }
+    ]
+  },
+  {
+    id: 'precision',
+    name: 'Adresse & Précision',
+    icon: '🎯',
+    desc: 'Fléchettes, Bowling, Billard...',
+    games: [
+      { id: 'g_darts', name: 'Fléchettes 501' },
+      { id: 'g_bowling', name: 'Bowling' },
+      { id: 'g_billiard', name: 'Billard Américain' },
+      { id: 'g_molkky', name: 'Mölkky' }
+    ]
+  },
+  {
+    id: 'mind',
+    name: 'Réflexion & Stratégie',
+    icon: '🧠',
+    desc: 'Échecs, Poker, Scrabble...',
+    games: [
+      { id: 'g_chess', name: 'Échecs Blitz 5min' },
+      { id: 'g_poker', name: 'Poker Hold\'em' },
+      { id: 'g_blindtest', name: 'Blind Test Musical' }
+    ]
+  },
+  {
+    id: 'videogames',
+    name: 'Jeux Vidéo',
+    icon: '🎮',
+    desc: 'FC 26, Mario Kart, Smash, RL...',
+    games: [
+      { id: 'g_mk8', name: 'Mario Kart 8 Deluxe' },
+      { id: 'g_fc26', name: 'EA Sports FC 26' },
+      { id: 'g_smash', name: 'Super Smash Bros Ultimate' },
+      { id: 'g_rl', name: 'Rocket League' },
+      { id: 'g_tekken', name: 'Tekken 8' }
+    ]
+  }
+];
+
+// --- BASE DE DONNÉES GLOBALE DES UTILISATEURS / AMIS ---
+const INITIAL_PROFILES_DB = [
+  { id: 'clement', name: 'Clément', tag: '@clement_boss', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', wins: 38, losses: 35, streak: '7🔥', status: 'Nemesis', statusColor: 'text-rose-500', elo: 2090, categoryStats: { sports: { wins: 12, losses: 18, winRate: 40 }, precision: { wins: 10, losses: 8, winRate: 55 }, mind: { wins: 4, losses: 7, winRate: 36 }, videogames: { wins: 12, losses: 2, winRate: 85 } }, lastForm: ['W', 'W', 'L', 'W', 'W'] },
+  { id: 'hugo', name: 'Hugo', tag: '@hugo_fast', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', wins: 32, losses: 12, streak: '4🔥', status: 'Tu domines', statusColor: 'text-emerald-400', elo: 1850, categoryStats: { sports: { wins: 10, losses: 2, winRate: 83 }, precision: { wins: 8, losses: 4, winRate: 66 }, mind: { wins: 6, losses: 3, winRate: 66 }, videogames: { wins: 8, losses: 3, winRate: 72 } }, lastForm: ['L', 'W', 'L', 'L', 'W'] },
+  { id: 'sarah', name: 'Sarah', tag: '@sarah_smash', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', wins: 15, losses: 15, streak: '-', status: 'Égalité', statusColor: 'text-amber-400', elo: 1980, categoryStats: { sports: { wins: 4, losses: 5, winRate: 44 }, precision: { wins: 3, losses: 3, winRate: 50 }, mind: { wins: 3, losses: 4, winRate: 42 }, videogames: { wins: 5, losses: 3, winRate: 62 } }, lastForm: ['W', 'L', 'W', 'L', 'W'] },
+  { id: 'thomas', name: 'Thomas', tag: '@thomas_pro', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80', wins: 9, losses: 21, streak: '-', status: 'Il domine', statusColor: 'text-rose-400', elo: 1720, categoryStats: { sports: { wins: 2, losses: 8, winRate: 20 }, precision: { wins: 4, losses: 5, winRate: 44 }, mind: { wins: 1, losses: 4, winRate: 20 }, videogames: { wins: 2, losses: 4, winRate: 33 } }, lastForm: ['L', 'L', 'L', 'W', 'L'] }
+];
+
+// --- NOTIFICATIONS PENDANTES ---
+const INITIAL_NOTIFICATIONS = [
+  { id: 'n1', type: 'MATCH_CLAIM', from: 'Clément', details: 'Prétend t\'avoir battu à Mario Kart (2-1)', timestamp: 'Il y a 10 min', status: 'PENDING' },
+  { id: 'n2', type: 'FRIEND_REQUEST', from: 'Thomas (@thomas_pro)', details: 'Veut t\'ajouter à ses amis', timestamp: 'Il y a 1h', status: 'PENDING' }
+];
+
+// --- LIGUES ---
+const INITIAL_LEAGUES = [
+  {
+    id: 'LIGUE-8842',
+    passcode: '1234',
+    name: 'Ligue Pro des Barons',
+    discipline: 'Multi-Disciplines',
+    season: 'Saison 12',
+    creator: 'Alex',
+    standings: [
+      { rank: 1, name: 'Alex (Toi)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80', pts: 28, played: 12, w: 9, d: 1, l: 2, diff: '+24', streak: '🔥 5' },
+      { rank: 2, name: 'Clément', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80', pts: 25, played: 12, w: 8, d: 1, l: 3, diff: '+14', streak: '🔥 7' },
+      { rank: 3, name: 'Sarah', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80', pts: 18, played: 11, w: 5, d: 3, l: 3, diff: '+3', streak: '•' },
+      { rank: 4, name: 'Hugo', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80', pts: 12, played: 11, w: 3, d: 3, l: 5, diff: '-13', streak: '🔥 4' }
+    ],
+    topScorer: 'Alex (45 Victoires)',
+    bestDefense: 'Clément (26 défaites)',
+    matchesList: []
+  }
+];
+
+// --- COUPES ---
+const INITIAL_TOURNAMENTS = [
+  {
+    id: 'COUPE-9901',
+    passcode: '0000',
+    name: 'Mario Kart Champions Cup 🏆',
+    game: 'Mario Kart 8 Deluxe',
+    creator: 'Alex',
+    invitedPlayers: ['Alex', 'Clément', 'Sarah', 'Hugo', 'Thomas'],
+    bracket: {
+      leftQuarts: [
+        { id: 'l_q1', round: 'leftQuarts', p1: 'Alex', p2: 'Thomas', winner: 'Alex', score1: 3, score2: 1 },
+        { id: 'l_q2', round: 'leftQuarts', p1: 'Sarah', p2: 'Nathan', winner: 'Sarah', score1: 3, score2: 0 }
+      ],
+      rightQuarts: [
+        { id: 'r_q1', round: 'rightQuarts', p1: 'Clément', p2: 'Kylian', winner: 'Clément', score1: 3, score2: 2 },
+        { id: 'r_q2', round: 'rightQuarts', p1: 'Hugo', p2: 'Lucas', winner: 'Hugo', score1: 3, score2: 1 }
+      ],
+      leftSemis: [
+        { id: 'l_s1', round: 'leftSemis', p1: 'Alex', p2: 'Sarah', winner: 'Alex', score1: 3, score2: 1 }
+      ],
+      rightSemis: [
+        { id: 'r_s1', round: 'rightSemis', p1: 'Clément', p2: 'Hugo', winner: 'Clément', score1: 3, score2: 2 }
+      ],
+      final: { id: 'f1', round: 'final', p1: 'Alex', p2: 'Clément', winner: null, score1: null, score2: null }
+    },
+    mvp: 'Alex (3 Sweep)',
+    totalMatchesPlayed: 5
+  }
+];
+
+// --- HISTORIQUE GLOBAL ---
+const INITIAL_MATCHES = [
+  { id: 'm101', p1: 'Alex', p2: 'Clément', category: 'Mario Kart 8 Deluxe', winner: 'Alex', score: '1er vs 2e', date: 'Aujourd\'hui, 14:30', proofUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=300&auto=format&fit=crop&q=80' },
+  { id: 'm102', p1: 'Alex', p2: 'Clément', category: 'Échecs Blitz 5min', winner: 'Clément', score: 'Mat par la Tour', date: 'Hier, 22:15', proofUrl: null }
+];
+
+export default function App() {
+  const [currentScreen, setCurrentScreen] = useState('home');
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDeclareModalOpen, setIsDeclareModalOpen] = useState(false);
+  const [isFullHistoryModalOpen, setIsFullHistoryModalOpen] = useState(false);
+  const [isSuperAdminAddGameOpen, setIsSuperAdminAddGameOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAddFriendSearchOpen, setIsAddFriendSearchOpen] = useState(false);
+
+  const [isCreateLeagueModalOpen, setIsCreateLeagueModalOpen] = useState(false);
+  const [isJoinLeagueModalOpen, setIsJoinLeagueModalOpen] = useState(false);
+  const [isAddLeagueMatchModalOpen, setIsAddLeagueMatchModalOpen] = useState(false);
+
+  const [isCreateTourneyModalOpen, setIsCreateTourneyModalOpen] = useState(false);
+  const [isJoinTourneyModalOpen, setIsJoinTourneyModalOpen] = useState(false);
+  const [editingCupMatch, setEditingCupMatch] = useState(null);
+  const [cupScoreForm, setCupScoreForm] = useState({ score1: '', score2: '' });
+
+  const [user, setUser] = useState({
+    id: 'usr_me',
+    name: 'Alex',
+    tag: '@alex_god',
+    role: 'SUPERADMIN',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+    themeColor: USER_THEME_COLORS[0],
+    elo: 2150,
+    wins: 42,
+    losses: 24,
+    streak: 5
+  });
+
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+  const [selectedGameCatTab, setSelectedGameCatTab] = useState('sports');
+  const [profilesDB, setProfilesDB] = useState(INITIAL_PROFILES_DB);
+  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+
+  const [leagues, setLeagues] = useState(INITIAL_LEAGUES);
+  const [selectedLeagueIndex, setSelectedLeagueIndex] = useState(0);
+
+  const [tournaments, setTournaments] = useState(INITIAL_TOURNAMENTS);
+  const [selectedTourneyIndex, setSelectedTourneyIndex] = useState(0);
+
+  const [allMatches, setAllMatches] = useState(INITIAL_MATCHES);
+
+  const profileImageInputRef = useRef(null);
+  const proofImageInputRef = useRef(null);
+
+  const [toastMessage, setToastMessage] = useState(null);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
+
+  const [matchForm, setMatchForm] = useState({ opponentId: 'clement', gameName: 'Mario Kart 8 Deluxe', result: 'WIN', scoreNote: '', proofImage: null });
+  const [leagueCreateForm, setLeagueCreateForm] = useState({ name: '', discipline: 'Multi-Disciplines', passcode: '' });
+  const [leagueJoinForm, setLeagueJoinForm] = useState({ id: '', passcode: '' });
+  const [leagueMatchForm, setLeagueMatchForm] = useState({ p1: 'Alex', p2: 'Clément', score1: 0, score2: 0, game: 'Mario Kart' });
+
+  const [tourneyCreateForm, setTourneyCreateForm] = useState({ name: '', game: 'Mario Kart 8 Deluxe', passcode: '' });
+  const [tourneyJoinForm, setTourneyJoinForm] = useState({ id: '', passcode: '' });
+  const [adminGameForm, setAdminGameForm] = useState({ name: '', categoryId: 'videogames' });
+  const [profileForm, setProfileForm] = useState({ name: user.name, tag: user.tag, avatar: user.avatar, themeId: user.themeColor.id });
+
+  const allAvailableGames = categories.flatMap(cat => cat.games.map(g => g.name));
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleProfileImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfileForm(prev => ({ ...prev, avatar: reader.result }));
+        showToast('Photo de galerie chargée !');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProofImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMatchForm(prev => ({ ...prev, proofImage: reader.result }));
+        showToast('Preuve photo sélectionnée !');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAcceptNotif = (notifId) => {
+    setNotifications(notifications.map(n => n.id === notifId ? { ...n, status: 'ACCEPTED' } : n));
+    showToast('✅ Action acceptée !');
+  };
+
+  const handleRejectNotif = (notifId) => {
+    setNotifications(notifications.map(n => n.id === notifId ? { ...n, status: 'REJECTED' } : n));
+    showToast('❌ Action refusée.');
+  };
+
+  const handleAddFriendBySearch = (friendObj) => {
+    if (profilesDB.some(p => p.id === friendObj.id)) {
+      showToast(`${friendObj.name} est déjà dans tes amis !`);
+      return;
+    }
+    setProfilesDB([...profilesDB, friendObj]);
+    setIsAddFriendSearchOpen(false);
+    showToast(`🤝 ${friendObj.name} ajouté à tes amis avec succès !`);
+  };
+
+  const handleDeclareMatch = (e) => {
+    e.preventDefault();
+    const isWin = matchForm.result === 'WIN';
+    const targetFriend = profilesDB.find(r => r.id === matchForm.opponentId) || profilesDB[0];
+
+    const eloDelta = isWin ? 18 : -15;
+    setUser(prev => ({
+      ...prev,
+      wins: isWin ? prev.wins + 1 : prev.wins,
+      losses: !isWin ? prev.losses + 1 : prev.losses,
+      streak: isWin ? prev.streak + 1 : 0,
+      elo: Math.max(1000, prev.elo + eloDelta)
+    }));
+
+    const newM = {
+      id: `m_${Date.now()}`,
+      p1: user.name,
+      p2: targetFriend.name,
+      category: matchForm.gameName,
+      winner: isWin ? user.name : targetFriend.name,
+      score: matchForm.scoreNote || (isWin ? 'Victoire' : 'Défaite'),
+      date: 'À l\'instant',
+      proofUrl: matchForm.proofImage
+    };
+
+    setAllMatches([newM, ...allMatches]);
+    setIsDeclareModalOpen(false);
+    showToast(`⚡ Match enregistré ! ELO: ${eloDelta > 0 ? '+' : ''}${eloDelta} PTS`);
+  };
+
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    const chosenTheme = USER_THEME_COLORS.find(c => c.id === profileForm.themeId) || USER_THEME_COLORS[0];
+    setUser(prev => ({
+      ...prev,
+      name: profileForm.name,
+      tag: profileForm.tag,
+      avatar: profileForm.avatar,
+      themeColor: chosenTheme
+    }));
+    showToast('✅ Profil & Paramètres mis à jour !');
+  };
+
+  const handleCreateLeague = (e) => {
+    e.preventDefault();
+    const generatedId = `LIGUE-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newL = {
+      id: generatedId,
+      passcode: leagueCreateForm.passcode || 'Sans mdp',
+      name: leagueCreateForm.name || 'Ligue sans nom',
+      discipline: leagueCreateForm.discipline,
+      season: 'Saison 1',
+      creator: user.name,
+      standings: [
+        { rank: 1, name: `${user.name} (Toi)`, avatar: user.avatar, pts: 0, played: 0, w: 0, d: 0, l: 0, diff: '0', streak: '🔥 0' }
+      ],
+      topScorer: '-',
+      bestDefense: '-',
+      matchesList: []
+    };
+    setLeagues([...leagues, newL]);
+    setSelectedLeagueIndex(leagues.length);
+    setIsCreateLeagueModalOpen(false);
+    showToast(`Ligue "${newL.name}" créée ! ID: ${generatedId}`);
+  };
+
+  const handleJoinLeague = (e) => {
+    e.preventDefault();
+    const foundIdx = leagues.findIndex(l => l.id.toUpperCase() === leagueJoinForm.id.trim().toUpperCase());
+    if (foundIdx !== -1) {
+      setSelectedLeagueIndex(foundIdx);
+      setIsJoinLeagueModalOpen(false);
+      showToast(`Tu as rejoint la ligue "${leagues[foundIdx].name}" !`);
+    } else {
+      showToast('❌ ID de Ligue introuvable.');
+    }
+  };
+
+  const handleAddLeagueMatch = (e) => {
+    e.preventDefault();
+    const activeL = leagues[selectedLeagueIndex];
+    if (!activeL) return;
+
+    const s1 = parseInt(leagueMatchForm.score1, 10);
+    const s2 = parseInt(leagueMatchForm.score2, 10);
+
+    const newMatch = {
+      id: `lm_${Date.now()}`,
+      p1: leagueMatchForm.p1,
+      p2: leagueMatchForm.p2,
+      score1: s1,
+      score2: s2,
+      game: leagueMatchForm.game
+    };
+
+    const updatedMatches = [newMatch, ...activeL.matchesList];
+    const scoresMap = {};
+    activeL.standings.forEach(st => {
+      scoresMap[st.name] = { pts: st.pts, played: st.played + 1, w: st.w, d: st.d, l: st.l, diff: 0, avatar: st.avatar, streak: st.streak };
+    });
+
+    updatedMatches.forEach(m => {
+      if (!scoresMap[m.p1]) scoresMap[m.p1] = { pts: 0, played: 0, w: 0, d: 0, l: 0, diff: 0, avatar: user.avatar, streak: '•' };
+      if (!scoresMap[m.p2]) scoresMap[m.p2] = { pts: 0, played: 0, w: 0, d: 0, l: 0, diff: 0, avatar: user.avatar, streak: '•' };
+
+      if (m.score1 > m.score2) {
+        scoresMap[m.p1].pts += 3; scoresMap[m.p1].w += 1; scoresMap[m.p2].l += 1;
+      } else if (m.score2 > m.score1) {
+        scoresMap[m.p2].pts += 3; scoresMap[m.p2].w += 1; scoresMap[m.p1].l += 1;
+      } else {
+        scoresMap[m.p1].pts += 1; scoresMap[m.p1].d += 1;
+        scoresMap[m.p2].pts += 1; scoresMap[m.p2].d += 1;
+      }
+    });
+
+    const newStandings = Object.keys(scoresMap).map(name => ({
+      name,
+      avatar: scoresMap[name].avatar,
+      pts: scoresMap[name].pts,
+      played: scoresMap[name].w + scoresMap[name].d + scoresMap[name].l,
+      w: scoresMap[name].w,
+      d: scoresMap[name].d,
+      l: scoresMap[name].l,
+      diff: '+0',
+      streak: scoresMap[name].streak
+    })).sort((a, b) => b.pts - a.pts).map((st, idx) => ({ ...st, rank: idx + 1 }));
+
+    const updatedLeagues = leagues.map((l, idx) => {
+      if (idx === selectedLeagueIndex) {
+        return { ...l, standings: newStandings, matchesList: updatedMatches };
+      }
+      return l;
+    });
+
+    setLeagues(updatedLeagues);
+    setIsAddLeagueMatchModalOpen(false);
+    showToast(`📊 Match ajouté à la ligue ! Classement mis à jour.`);
+  };
+
+  const handleCreateTourney = (e) => {
+    e.preventDefault();
+    const generatedId = `COUPE-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newT = {
+      id: generatedId,
+      passcode: tourneyCreateForm.passcode || 'Libre',
+      name: tourneyCreateForm.name || 'Coupe sans nom',
+      game: tourneyCreateForm.game,
+      creator: user.name,
+      invitedPlayers: [user.name, 'Clément', 'Sarah', 'Hugo'],
+      bracket: {
+        leftQuarts: [
+          { id: 'l_q1', round: 'leftQuarts', p1: 'Alex', p2: 'Thomas', winner: null, score1: null, score2: null },
+          { id: 'l_q2', round: 'leftQuarts', p1: 'Sarah', p2: 'Nathan', winner: null, score1: null, score2: null }
+        ],
+        rightQuarts: [
+          { id: 'r_q1', round: 'rightQuarts', p1: 'Clément', p2: 'Kylian', winner: null, score1: null, score2: null },
+          { id: 'r_q2', round: 'rightQuarts', p1: 'Hugo', p2: 'Lucas', winner: null, score1: null, score2: null }
+        ],
+        leftSemis: [{ id: 'l_s1', round: 'leftSemis', p1: 'TBD', p2: 'TBD', winner: null, score1: null, score2: null }],
+        rightSemis: [{ id: 'r_s1', round: 'rightSemis', p1: 'TBD', p2: 'TBD', winner: null, score1: null, score2: null }],
+        final: { id: 'f1', round: 'final', p1: 'TBD', p2: 'TBD', winner: null, score1: null, score2: null }
+      }
+    };
+    setTournaments([...tournaments, newT]);
+    setSelectedTourneyIndex(tournaments.length);
+    setIsCreateTourneyModalOpen(false);
+    showToast(`Coupe "${newT.name}" créée ! ID: ${generatedId}`);
+  };
+
+  const handleJoinTourney = (e) => {
+    e.preventDefault();
+    const foundIdx = tournaments.findIndex(t => t.id.toUpperCase() === tourneyJoinForm.id.trim().toUpperCase());
+    if (foundIdx !== -1) {
+      setSelectedTourneyIndex(foundIdx);
+      setIsJoinTourneyModalOpen(false);
+      showToast(`Tu as rejoint la coupe "${tournaments[foundIdx].name}" !`);
+    } else {
+      showToast('❌ ID de Coupe introuvable.');
+    }
+  };
+
+  const handleSaveCupMatchResult = (e) => {
+    e.preventDefault();
+    if (!editingCupMatch) return;
+
+    const s1 = parseInt(cupScoreForm.score1, 10);
+    const s2 = parseInt(cupScoreForm.score2, 10);
+    if (isNaN(s1) || isNaN(s2) || s1 === s2) {
+      showToast('❌ Scores invalides.');
+      return;
+    }
+
+    const { tourneyId, match, roundKey } = editingCupMatch;
+    const winnerName = s1 > s2 ? match.p1 : match.p2;
+
+    const updatedTournaments = tournaments.map(t => {
+      if (t.id === tourneyId) {
+        const newBracket = { ...t.bracket };
+        if (roundKey === 'leftQuarts') {
+          newBracket.leftQuarts = newBracket.leftQuarts.map(m => m.id === match.id ? { ...m, score1: s1, score2: s2, winner: winnerName } : m);
+          if (match.id === 'l_q1') newBracket.leftSemis[0].p1 = winnerName;
+          if (match.id === 'l_q2') newBracket.leftSemis[0].p2 = winnerName;
+        } else if (roundKey === 'rightQuarts') {
+          newBracket.rightQuarts = newBracket.rightQuarts.map(m => m.id === match.id ? { ...m, score1: s1, score2: s2, winner: winnerName } : m);
+          if (match.id === 'r_q1') newBracket.rightSemis[0].p1 = winnerName;
+          if (match.id === 'r_q2') newBracket.rightSemis[0].p2 = winnerName;
+        } else if (roundKey === 'leftSemis') {
+          newBracket.leftSemis = newBracket.leftSemis.map(m => m.id === match.id ? { ...m, score1: s1, score2: s2, winner: winnerName } : m);
+          newBracket.final.p1 = winnerName;
+        } else if (roundKey === 'rightSemis') {
+          newBracket.rightSemis = newBracket.rightSemis.map(m => m.id === match.id ? { ...m, score1: s1, score2: s2, winner: winnerName } : m);
+          newBracket.final.p2 = winnerName;
+        } else if (roundKey === 'final') {
+          newBracket.final = { ...newBracket.final, score1: s1, score2: s2, winner: winnerName };
+        }
+        return { ...t, bracket: newBracket };
+      }
+      return t;
+    });
+
+    setTournaments(updatedTournaments);
+    setEditingCupMatch(null);
+    showToast(`🏆 Match validé ! Vainqueur : ${winnerName}`);
+  };
+
+  const handleAdminAddGame = (e) => {
+    e.preventDefault();
+    if (!adminGameForm.name.trim()) return;
+
+    setCategories(categories.map(cat => {
+      if (cat.id === adminGameForm.categoryId) {
+        return { ...cat, games: [...cat.games, { id: `g_${Date.now()}`, name: adminGameForm.name }] };
+      }
+      return cat;
+    }));
+
+    setIsSuperAdminAddGameOpen(false);
+    showToast(`🎮 Nouveau jeu "${adminGameForm.name}" ajouté officiellement !`);
+    setAdminGameForm({ name: '', categoryId: 'videogames' });
+  };
+
+  const activeLeague = leagues[selectedLeagueIndex] || leagues[0];
+  const activeTourney = tournaments[selectedTourneyIndex] || tournaments[0];
+  const pendingNotifsCount = notifications.filter(n => n.status === 'PENDING').length;
+
+  return (
+    <div className="min-h-screen bg-[#07070A] text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-black flex flex-col justify-between">
+      
+      {/* GLOW DE FOND SIGNATURE */}
+      <div 
+        className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-md h-96 blur-[130px] pointer-events-none opacity-20" 
+        style={{ backgroundColor: user.themeColor.hex }}
+      />
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 bg-[#07070A]/90 backdrop-blur-md border-b border-white/10 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setCurrentScreen('home')}>
+          <div className="flex items-center space-x-1 font-black text-xl italic tracking-tighter">
+            <span style={{ color: user.themeColor.hex }}>V</span>
+            <span className="text-fuchsia-500">II</span>
+            <span className="text-white ml-1 font-sans not-italic text-lg tracking-widest font-extrabold">VERSUS</span>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2.5">
+          {/* NOTIFICATION DROP-DOWN */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+              className="relative p-2 rounded-xl bg-slate-900 border border-white/10 text-amber-400 hover:bg-slate-800 transition cursor-pointer"
+            >
+              <Bell className="w-4 h-4" />
+              {pendingNotifsCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+              )}
+            </button>
+
+            {isNotificationsOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl p-4 z-50 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <span className="text-xs font-black uppercase text-amber-400">Notifications & Demandes</span>
+                  <button onClick={() => setIsNotificationsOpen(false)} className="text-xs text-slate-400">✕</button>
+                </div>
+
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-4">Aucune notification passée.</p>
+                ) : (
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                    {notifications.map(n => (
+                      <div key={n.id} className="p-3 rounded-xl bg-slate-950 border border-white/5 space-y-2 text-xs">
+                        <div className="flex justify-between text-[10px] text-slate-500">
+                          <span className="font-bold text-white">{n.from}</span>
+                          <span>{n.timestamp}</span>
+                        </div>
+                        <p className="text-slate-300">{n.details}</p>
+
+                        {n.status === 'PENDING' ? (
+                          <div className="flex space-x-2 pt-1">
+                            <button 
+                              onClick={() => handleAcceptNotif(n.id)}
+                              className="flex-1 py-1.5 bg-emerald-500/20 text-emerald-300 rounded-lg font-bold border border-emerald-500/40 text-[10px] cursor-pointer"
+                            >
+                              Accepter
+                            </button>
+                            <button 
+                              onClick={() => handleRejectNotif(n.id)}
+                              className="flex-1 py-1.5 bg-rose-500/20 text-rose-300 rounded-lg font-bold border border-rose-500/40 text-[10px] cursor-pointer"
+                            >
+                              Refuser
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-mono text-cyan-400 uppercase font-bold">Traité ({n.status})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={() => { setCurrentScreen('profile'); setIsSettingsOpen(false); }}
+            className="w-8 h-8 rounded-xl overflow-hidden border-2 cursor-pointer transition hover:scale-105"
+            style={{ borderColor: user.themeColor.hex }}
+          >
+            <img src={user.avatar} className="w-full h-full object-cover" />
+          </button>
+        </div>
+      </header>
+
+      {/* TOAST */}
+      {toastMessage && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900 border border-white/20 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center space-x-2 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+          <Sparkles className="w-4 h-4" style={{ color: user.themeColor.hex }} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 max-w-md mx-auto w-full px-4 py-4 space-y-6 pb-28">
+
+        {/* ================= 1. ACCUEIL ================= */}
+        {currentScreen === 'home' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="p-4 rounded-3xl bg-slate-900 border border-white/10 flex items-center justify-between shadow-xl">
+              <div className="flex items-center space-x-3">
+                <img src={user.avatar} className="w-12 h-12 rounded-2xl object-cover ring-2" style={{ borderColor: user.themeColor.hex }} />
+                <div>
+                  <div className="flex items-center space-x-1.5">
+                    <span className="font-extrabold text-sm text-white">{user.name}</span>
+                    <span className="text-[9px] bg-slate-950 px-2 py-0.5 rounded font-mono font-bold" style={{ color: user.themeColor.hex }}>
+                      {user.tag}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-400 font-mono font-bold mt-0.5">Rating VERSUS : {user.elo} PTS</p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 font-mono uppercase font-bold">Winrate</span>
+                <p className="text-sm font-black font-mono text-emerald-400">
+                  {((user.wins / (user.wins + user.losses || 1)) * 100).toFixed(1)}%
+                </p>
+              </div>
+            </div>
+
+            <div className="relative rounded-3xl border border-white/15 bg-gradient-to-b from-slate-900/90 via-slate-950 to-[#07070A] p-6 shadow-2xl text-center space-y-5 overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-black tracking-widest text-slate-400">Rivalité Actuelle</span>
+                <select 
+                  value={selectedRival?.id || profilesDB[0].id}
+                  onChange={(e) => {
+                    const r = profilesDB.find(item => item.id === e.target.value);
+                    if (r) setSelectedRival(r);
+                  }}
+                  className="bg-slate-900 border border-white/10 text-xs font-bold text-white px-2 py-1 rounded-xl focus:outline-none cursor-pointer"
+                >
+                  {profilesDB.map(r => (
+                    <option key={r.id} value={r.id}>vs {r.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between px-2">
+                <div className="flex flex-col items-center space-y-1">
+                  <img src={user.avatar} className="w-16 h-16 rounded-2xl object-cover ring-2" style={{ borderColor: user.themeColor.hex }} />
+                  <span className="text-xs font-black text-white">{user.name}</span>
+                  <span className="text-[10px] text-emerald-400 font-mono font-bold">🔥 {user.streak} STREAK</span>
+                </div>
+
+                <div className="flex flex-col items-center justify-center space-y-1">
+                  <div className="text-xl font-black italic bg-gradient-to-r from-cyan-400 to-fuchsia-500 bg-clip-text text-transparent">VS</div>
+                  <div className="text-3xl font-black font-mono text-white">
+                    <span style={{ color: user.themeColor.hex }}>{selectedRival?.wins || 12}</span> - <span className="text-fuchsia-500">{selectedRival?.losses || 8}</span>
+                  </div>
+                  <span className="text-[9px] text-slate-500 font-mono uppercase">{selectedRival?.name}</span>
+                </div>
+
+                <div className="flex flex-col items-center space-y-1">
+                  <img src={selectedRival?.avatar || profilesDB[0].avatar} className="w-16 h-16 rounded-2xl object-cover ring-2 ring-fuchsia-500" />
+                  <span className="text-xs font-black text-white">{selectedRival?.name || 'Ami'}</span>
+                  <span className="text-[10px] text-rose-500 font-mono font-bold">{selectedRival?.streak || '7🔥'}</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsDeclareModalOpen(true)}
+                style={{ backgroundColor: user.themeColor.hex }}
+                className="w-full py-3.5 px-4 rounded-2xl text-black font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center space-x-2 transition cursor-pointer hover:opacity-95 active:scale-95"
+              >
+                <Plus className="w-5 h-5 stroke-[3]" />
+                <span>Enregistrer un Match Direct</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                  <History className="w-3.5 h-3.5" style={{ color: user.themeColor.hex }} />
+                  <span>Derniers Combats Enregistrés</span>
+                </h3>
+                <button onClick={() => setIsFullHistoryModalOpen(true)} className="text-xs font-bold text-cyan-400 hover:underline">
+                  Voir tout (+)
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {allMatches.slice(0, 4).map((m) => (
+                  <div key={m.id} className="p-3.5 rounded-2xl bg-slate-900 border border-white/10 space-y-1.5">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="font-bold text-cyan-400">{m.category}</span>
+                      <span className="text-slate-500">{m.date}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-bold">
+                      <span className={m.winner === user.name ? 'text-emerald-400 font-black' : 'text-slate-300'}>{m.p1} vs {m.p2}</span>
+                      <span className="text-xs font-mono bg-white/5 px-2 py-0.5 rounded text-white">{m.score}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= 2. LIGUE ================= */}
+        {currentScreen === 'leagues' && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between gap-2">
+              <button 
+                onClick={() => setIsJoinLeagueModalOpen(true)}
+                className="flex-1 py-2.5 bg-slate-900 border border-white/10 hover:border-cyan-500/40 text-xs font-bold text-white rounded-xl flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Key className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Rejoindre Ligue</span>
+              </button>
+              <button 
+                onClick={() => setIsCreateLeagueModalOpen(true)}
+                className="flex-1 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold text-xs rounded-xl flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Créer une Ligue</span>
+              </button>
+            </div>
+
+            {leagues.length > 0 && (
+              <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
+                {leagues.map((l, idx) => (
+                  <button
+                    key={l.id}
+                    onClick={() => setSelectedLeagueIndex(idx)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition border ${
+                      selectedLeagueIndex === idx ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300' : 'bg-slate-900 border-white/10 text-slate-400'
+                    }`}
+                  >
+                    {l.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeLeague && (
+              <div className="space-y-4">
+                <div className="p-5 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[9px] font-mono font-bold text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-500/30">
+                        {activeLeague.id} • Discipline : {activeLeague.discipline}
+                      </span>
+                      <h2 className="text-xl font-black text-white mt-1">{activeLeague.name}</h2>
+                      <p className="text-xs text-slate-400 font-mono">{activeLeague.season} • Créateur : {activeLeague.creator}</p>
+                    </div>
+
+                    <button 
+                      onClick={() => setIsAddLeagueMatchModalOpen(true)}
+                      className="px-3 py-1.5 bg-cyan-500 text-black font-extrabold text-xs rounded-xl cursor-pointer shadow"
+                    >
+                      + Match Ligue
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Classement Type Ligue 1</span>
+                    
+                    <div className="grid grid-cols-12 text-[9px] font-black uppercase text-slate-500 tracking-wider px-2">
+                      <span className="col-span-1">#</span>
+                      <span className="col-span-5">Joueur</span>
+                      <span className="col-span-3 text-center">J / V-N-D</span>
+                      <span className="col-span-3 text-right">Points</span>
+                    </div>
+
+                    {activeLeague.standings.map((st) => (
+                      <div 
+                        key={st.rank}
+                        className={`grid grid-cols-12 items-center p-2.5 rounded-2xl border text-xs ${
+                          st.name.includes('Alex') ? 'bg-cyan-500/10 border-cyan-500/50 text-white font-bold' : 'bg-slate-950 border-white/5 text-slate-300'
+                        }`}
+                      >
+                        <span className="col-span-1 font-mono font-black">{st.rank}.</span>
+                        <div className="col-span-5 flex items-center space-x-2 truncate">
+                          <img src={st.avatar} className="w-6 h-6 rounded-lg object-cover" />
+                          <span className="truncate">{st.name}</span>
+                        </div>
+                        <div className="col-span-3 text-center font-mono text-[10px] text-slate-400">
+                          {st.played}m ({st.w}-{st.d}-{st.l})
+                        </div>
+                        <span className="col-span-3 text-right font-mono font-black text-cyan-400">{st.pts} PTS</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                    <div className="p-3 rounded-2xl bg-slate-950 border border-white/5 space-y-1">
+                      <span className="text-[9px] text-slate-500 font-bold uppercase">👑 Top Buteur</span>
+                      <p className="text-xs font-bold text-emerald-400">{activeLeague.topScorer}</p>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-950 border border-white/5 space-y-1">
+                      <span className="text-[9px] text-slate-500 font-bold uppercase">🛡️ Mur de Défense</span>
+                      <p className="text-xs font-bold text-cyan-400">{activeLeague.bestDefense}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= 3. COUPE ================= */}
+        {currentScreen === 'tournaments' && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div className="flex items-center justify-between gap-2">
+              <button 
+                onClick={() => setIsJoinTourneyModalOpen(true)}
+                className="flex-1 py-2.5 bg-slate-900 border border-white/10 hover:border-amber-500/40 text-xs font-bold text-white rounded-xl flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Key className="w-3.5 h-3.5 text-amber-400" />
+                <span>Rejoindre Coupe</span>
+              </button>
+              <button 
+                onClick={() => setIsCreateTourneyModalOpen(true)}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Créer une Coupe</span>
+              </button>
+            </div>
+
+            {tournaments.length > 0 && (
+              <div className="flex space-x-2 overflow-x-auto pb-1 no-scrollbar">
+                {tournaments.map((t, idx) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setSelectedTourneyIndex(idx)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap cursor-pointer transition border ${
+                      selectedTourneyIndex === idx ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-slate-900 border-white/10 text-slate-400'
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {activeTourney && (
+              <div className="p-5 rounded-3xl bg-slate-900 border border-white/10 space-y-5 overflow-x-auto">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-950 px-2 py-0.5 rounded border border-amber-500/30">
+                      ID : {activeTourney.id}
+                    </span>
+                    <h2 className="text-xl font-black text-white mt-1">{activeTourney.name}</h2>
+                    <p className="text-xs text-slate-400 font-mono">Discipline : {activeTourney.game}</p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center space-x-2 text-amber-300 text-xs font-medium">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Clique sur un match pour entrer ou modifier le score !</span>
+                </div>
+
+                {/* ARBRE SYMÉTRIQUE */}
+                <div className="relative p-4 rounded-2xl bg-[#07070A] border border-white/10 space-y-6">
+                  <div className="text-center my-2">
+                    <Trophy className="w-16 h-16 text-amber-400 mx-auto animate-bounce filter drop-shadow-[0_0_20px_rgba(245,158,11,0.6)]" />
+                    <span className="text-xs font-black uppercase text-amber-400 font-mono tracking-widest mt-1 block">GRANDE FINALE</span>
+                  </div>
+
+                  <div 
+                    onClick={() => setEditingCupMatch({ tourneyId: activeTourney.id, match: activeTourney.bracket.final, roundKey: 'final' })}
+                    className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-amber-500/10 to-amber-500/20 border border-amber-500/50 hover:border-amber-400 flex items-center justify-between text-xs font-black text-white max-w-xs mx-auto shadow-xl cursor-pointer transition"
+                  >
+                    <span className="text-cyan-400">{activeTourney.bracket.final.p1 || 'TBD'}</span>
+                    <span className="text-amber-400 font-mono text-base font-black px-2 py-0.5 rounded bg-black/40">
+                      {activeTourney.bracket.final.score1 !== null ? `${activeTourney.bracket.final.score1} - ${activeTourney.bracket.final.score2}` : 'VS'}
+                    </span>
+                    <span className="text-fuchsia-400">{activeTourney.bracket.final.p2 || 'TBD'}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                    <div className="space-y-3 border-r border-white/10 pr-2">
+                      <span className="text-[9px] font-black uppercase text-cyan-400 tracking-wider">Demi-Finale A</span>
+                      {activeTourney.bracket.leftSemis.map(s => (
+                        <div 
+                          key={s.id} 
+                          onClick={() => setEditingCupMatch({ tourneyId: activeTourney.id, match: s, roundKey: 'leftSemis' })}
+                          className="p-2.5 rounded-xl bg-slate-900 border border-cyan-500/40 text-[11px] font-mono flex justify-between items-center cursor-pointer"
+                        >
+                          <span>{s.p1} vs {s.p2}</span>
+                          <span className="text-cyan-400 font-bold">{s.score1 !== null ? `${s.score1}:${s.score2}` : '+ Jouer'}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-3 pl-2">
+                      <span className="text-[9px] font-black uppercase text-fuchsia-400 tracking-wider text-right block">Demi-Finale B</span>
+                      {activeTourney.bracket.rightSemis.map(s => (
+                        <div 
+                          key={s.id} 
+                          onClick={() => setEditingCupMatch({ tourneyId: activeTourney.id, match: s, roundKey: 'rightSemis' })}
+                          className="p-2.5 rounded-xl bg-slate-900 border border-fuchsia-500/40 text-[11px] font-mono flex justify-between items-center cursor-pointer"
+                        >
+                          <span className="text-fuchsia-400 font-bold">{s.score1 !== null ? `${s.score1}:${s.score2}` : '+ Jouer'}</span>
+                          <span>{s.p1} vs {s.p2}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= 4. JEUX ================= */}
+        {currentScreen === 'games' && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div>
+              <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">Catalogue des Jeux & Disciplines</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Explore les catégories et tes statistiques de victoires par jeu.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedGameCatTab(cat.id)}
+                  className={`p-3 rounded-2xl border text-left transition cursor-pointer flex items-center space-x-2.5 ${
+                    selectedGameCatTab === cat.id ? 'bg-slate-900 border-cyan-500 text-cyan-300 shadow-lg' : 'bg-slate-950 border-white/5 text-slate-400'
+                  }`}
+                >
+                  <span className="text-2xl">{cat.icon}</span>
+                  <div>
+                    <h3 className="font-bold text-xs text-white leading-tight">{cat.name}</h3>
+                    <p className="text-[9px] text-slate-500 font-mono mt-0.5">{cat.games.length} jeux</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {categories.find(c => c.id === selectedGameCatTab) && (
+              <div className="p-5 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
+                <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                  <h3 className="font-extrabold text-sm text-white flex items-center space-x-2">
+                    <span>{categories.find(c => c.id === selectedGameCatTab).icon}</span>
+                    <span>{categories.find(c => c.id === selectedGameCatTab).name}</span>
+                  </h3>
+                  {user.role === 'SUPERADMIN' && (
+                    <button 
+                      onClick={() => setIsSuperAdminAddGameOpen(true)}
+                      className="text-[10px] bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40 px-2.5 py-1 rounded-lg font-bold cursor-pointer"
+                    >
+                      + Ajouter Jeu
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {categories.find(c => c.id === selectedGameCatTab).games.map(g => (
+                    <div key={g.id} className="p-3 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-between text-xs">
+                      <span className="font-bold text-white">{g.name}</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ================= 5. STATS & INSIGHTS IA ================= */}
+        {currentScreen === 'stats' && (
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">Stats & Insights IA</h2>
+
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-transparent border border-indigo-500/30 space-y-2">
+              <div className="flex items-center space-x-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                <Moon className="w-4 h-4" />
+                <span>TU GAGNES PLUS LE SOIR</span>
+              </div>
+              <p className="text-sm font-semibold text-white">
+                Entre 20h et 00h, ton taux de victoire grimpe de <span className="text-emerald-400 font-black">+17%</span>.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-2">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Pire Adversaire</span>
+                <div className="flex items-center space-x-2">
+                  <img src={profilesDB[0].avatar} className="w-8 h-8 rounded-lg object-cover" />
+                  <div>
+                    <p className="text-xs font-bold text-white">{profilesDB[0].name}</p>
+                    <p className="text-[10px] text-rose-400 font-mono">51% de défaites</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-2">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Catégorie Maîtrisée</span>
+                <div>
+                  <p className="text-xs font-bold text-white">Jeux Vidéo</p>
+                  <p className="text-[10px] text-emerald-400 font-mono">85% victoires</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= 6. PROFIL ================= */}
+        {currentScreen === 'profile' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="p-5 rounded-3xl bg-slate-900 border border-white/10 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3.5">
+                  <img src={user.avatar} className="w-16 h-16 rounded-2xl object-cover ring-2 shadow-lg" style={{ borderColor: user.themeColor.hex }} />
+                  <div>
+                    <h2 className="text-xl font-black text-white">{user.name}</h2>
+                    <p className="text-xs text-slate-400 font-mono">{user.tag}</p>
+                    <p className="text-xs text-amber-400 font-mono font-bold mt-1">Rating : {user.elo} PTS</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                  className={`p-2.5 rounded-2xl border transition cursor-pointer ${
+                    isSettingsOpen ? 'bg-cyan-500 text-black border-cyan-400' : 'bg-slate-950 border-white/10 text-slate-300'
+                  }`}
+                  title="Paramètres"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {isSettingsOpen ? (
+              <div className="space-y-5 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Paramètres du Compte</h3>
+                  <button onClick={() => setIsSettingsOpen(false)} className="text-xs text-cyan-400 font-bold">Fermer ✕</button>
+                </div>
+
+                <form onSubmit={handleSaveProfile} className="p-5 rounded-3xl bg-slate-900 border border-white/10 space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Nom de Joueur</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.name}
+                      onChange={(e) => setProfileForm({...profileForm, name: e.target.value})}
+                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Tag unique (@pseudo)</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.tag}
+                      onChange={(e) => setProfileForm({...profileForm, tag: e.target.value})}
+                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Photo de Profil (Galerie)</label>
+                    <button 
+                      type="button"
+                      onClick={() => profileImageInputRef.current?.click()}
+                      className="w-full py-2.5 bg-slate-950 border border-white/10 rounded-xl text-xs font-bold text-slate-300 hover:text-white flex items-center justify-center space-x-2 cursor-pointer"
+                    >
+                      <Upload className="w-4 h-4 text-cyan-400" />
+                      <span>Importer une image locale</span>
+                    </button>
+                    <input type="file" ref={profileImageInputRef} accept="image/*" className="hidden" onChange={handleProfileImageUpload} />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    style={{ backgroundColor: user.themeColor.hex }}
+                    className="w-full text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer"
+                  >
+                    Enregistrer les Paramètres
+                  </button>
+                </form>
+
+                <div className="p-5 rounded-3xl bg-slate-900 border border-cyan-500/30 space-y-3">
+                  <div className="flex items-center space-x-2 text-cyan-400 font-bold text-xs uppercase">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Une Suggestion ou un Jeu Manquant ?</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Tu souhaites voir ajouter un jeu ou proposer une nouvelle fonctionnalité ? Envoie un mail au développeur !
+                  </p>
+                  <a 
+                    href="mailto:lounismpro@outlook.fr?subject=Suggestion%20App%20VERSUS"
+                    className="inline-flex items-center space-x-2 bg-white/10 text-cyan-300 text-xs font-bold px-3.5 py-2 rounded-xl border border-cyan-500/30"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Écrire à lounismpro@outlook.fr</span>
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Mes Amis & Palmarès H2H</h3>
+                  <button 
+                    onClick={() => setIsAddFriendSearchOpen(true)}
+                    className="text-xs text-cyan-400 font-bold flex items-center space-x-1 cursor-pointer"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Ajouter un ami</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {profilesDB.map((f) => (
+                    <div key={f.id} className="p-4 rounded-2xl bg-slate-900 border border-white/10 flex items-center justify-between">
+                      <div className="flex items-center space-x-3.5">
+                        <img src={f.avatar} className="w-12 h-12 rounded-2xl object-cover" />
+                        <div>
+                          <div className="font-extrabold text-sm text-white flex items-center space-x-2">
+                            <span>{f.name}</span>
+                            <span className="text-[10px] text-slate-500 font-mono">{f.tag}</span>
+                          </div>
+                          <p className="text-xs font-mono text-slate-400 mt-0.5">
+                            Bilan : <span className="text-emerald-400 font-bold">{f.wins}V</span> - <span className="text-rose-400 font-bold">{f.losses}D</span>
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-amber-400">{f.streak}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      </main>
+
+      {/* MODALS SUPPLÉMENTAIRES */}
+      {editingCupMatch && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/50 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-amber-400">Résultat du Match de Coupe</h3>
+              <button onClick={() => setEditingCupMatch(null)} className="text-slate-400">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveCupMatchResult} className="space-y-4">
+              <div className="text-center font-mono font-bold text-sm text-white">
+                {editingCupMatch.match.p1} vs {editingCupMatch.match.p2}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <input 
+                  type="number" 
+                  min="0"
+                  placeholder={`Score ${editingCupMatch.match.p1}`}
+                  required
+                  value={cupScoreForm.score1}
+                  onChange={(e) => setCupScoreForm({ ...cupScoreForm, score1: e.target.value })}
+                  className="bg-slate-950 border border-cyan-500/40 rounded-xl py-3 text-center text-lg font-black font-mono text-white"
+                />
+                <input 
+                  type="number" 
+                  min="0"
+                  placeholder={`Score ${editingCupMatch.match.p2}`}
+                  required
+                  value={cupScoreForm.score2}
+                  onChange={(e) => setCupScoreForm({ ...cupScoreForm, score2: e.target.value })}
+                  className="bg-slate-950 border border-fuchsia-500/40 rounded-xl py-3 text-center text-lg font-black font-mono text-white"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-amber-500 text-black font-extrabold py-3.5 rounded-xl text-xs uppercase cursor-pointer">
+                Valider et Qualifier le Vainqueur
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isAddFriendSearchOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Rechercher un Ami par Nom / Tag</h3>
+              <button onClick={() => setIsAddFriendSearchOpen(false)} className="text-slate-400">✕</button>
+            </div>
+
+            <div className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="ex: Clément ou @clement_boss"
+                value={friendSearchQuery}
+                onChange={(e) => setFriendSearchQuery(e.target.value)}
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none"
+              />
+
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {profilesDB
+                  .filter(p => p.name.toLowerCase().includes(friendSearchQuery.toLowerCase()) || p.tag.toLowerCase().includes(friendSearchQuery.toLowerCase()))
+                  .map(p => (
+                    <div key={p.id} className="p-3 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-between text-xs">
+                      <div className="flex items-center space-x-2">
+                        <img src={p.avatar} className="w-8 h-8 rounded-lg object-cover" />
+                        <div>
+                          <p className="font-bold text-white">{p.name}</p>
+                          <p className="text-[10px] text-slate-500">{p.tag}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleAddFriendBySearch(p)}
+                        className="px-3 py-1 bg-cyan-500 text-black font-extrabold rounded-lg text-[10px] cursor-pointer"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAddLeagueMatchModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Enregistrer un Match de Ligue</h3>
+              <button onClick={() => setIsAddLeagueMatchModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+
+            <form onSubmit={handleAddLeagueMatch} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <input 
+                  type="text" 
+                  value={leagueMatchForm.p1}
+                  onChange={(e) => setLeagueMatchForm({...leagueMatchForm, p1: e.target.value})}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                />
+                <input 
+                  type="text" 
+                  value={leagueMatchForm.p2}
+                  onChange={(e) => setLeagueMatchForm({...leagueMatchForm, p2: e.target.value})}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <input 
+                  type="number" 
+                  value={leagueMatchForm.score1}
+                  onChange={(e) => setLeagueMatchForm({...leagueMatchForm, score1: e.target.value})}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                />
+                <input 
+                  type="number" 
+                  value={leagueMatchForm.score2}
+                  onChange={(e) => setLeagueMatchForm({...leagueMatchForm, score2: e.target.value})}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-cyan-500 text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">
+                Mettre à jour le Classement
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isDeclareModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-white/15 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Nouveau Duel Direct</h3>
+              <button onClick={() => setIsDeclareModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+
+            <form onSubmit={handleDeclareMatch} className="space-y-3">
+              <select 
+                value={matchForm.opponentId}
+                onChange={(e) => setMatchForm({...matchForm, opponentId: e.target.value})}
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white"
+              >
+                {profilesDB.map(r => (
+                  <option key={r.id} value={r.id}>{r.name} ({r.tag})</option>
+                ))}
+              </select>
+
+              <select 
+                value={matchForm.gameName}
+                onChange={(e) => setMatchForm({...matchForm, gameName: e.target.value})}
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white"
+              >
+                {allAvailableGames.map((g, idx) => (
+                  <option key={idx} value={g}>{g}</option>
+                ))}
+              </select>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMatchForm({...matchForm, result: 'WIN'})}
+                  className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${matchForm.result === 'WIN' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-white/10 text-slate-400'}`}
+                >
+                  VICTOIRE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMatchForm({...matchForm, result: 'LOSS'})}
+                  className={`py-2 rounded-xl text-xs font-bold border cursor-pointer ${matchForm.result === 'LOSS' ? 'bg-rose-500/20 border-rose-500 text-rose-300' : 'bg-slate-950 border-white/10 text-slate-400'}`}
+                >
+                  DÉFAITE
+                </button>
+              </div>
+
+              <button type="submit" style={{ backgroundColor: user.themeColor.hex }} className="w-full text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">
+                Enregistrer le Match
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isCreateLeagueModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Créer une Ligue</h3>
+              <button onClick={() => setIsCreateLeagueModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+            <form onSubmit={handleCreateLeague} className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="Nom de la ligue" 
+                value={leagueCreateForm.name} 
+                onChange={(e) => setLeagueCreateForm({...leagueCreateForm, name: e.target.value})} 
+                required 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white" 
+              />
+              <input 
+                type="text" 
+                placeholder="Discipline (ex: Multi-disciplines)" 
+                value={leagueCreateForm.discipline} 
+                onChange={(e) => setLeagueCreateForm({...leagueCreateForm, discipline: e.target.value})} 
+                required 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white" 
+              />
+              <button type="submit" className="w-full bg-cyan-500 text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">Créer</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isJoinLeagueModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-cyan-500/30 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Rejoindre une Ligue</h3>
+              <button onClick={() => setIsJoinLeagueModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+            <form onSubmit={handleJoinLeague} className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="ID de la ligue (ex: LIGUE-8842)" 
+                value={leagueJoinForm.id} 
+                onChange={(e) => setLeagueJoinForm({...leagueJoinForm, id: e.target.value})} 
+                required 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase" 
+              />
+              <button type="submit" className="w-full bg-cyan-500 text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">Rejoindre</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isCreateTourneyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Créer une Coupe</h3>
+              <button onClick={() => setIsCreateTourneyModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+            <form onSubmit={handleCreateTourney} className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="Nom de la Coupe" 
+                value={tourneyCreateForm.name} 
+                onChange={(e) => setTourneyCreateForm({...tourneyCreateForm, name: e.target.value})} 
+                required 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white" 
+              />
+              <button type="submit" className="w-full bg-amber-500 text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">Créer l'Arbre</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isJoinTourneyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Rejoindre une Coupe</h3>
+              <button onClick={() => setIsJoinTourneyModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+            <form onSubmit={handleJoinTourney} className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="ID de la Coupe (ex: COUPE-9901)" 
+                value={tourneyJoinForm.id} 
+                onChange={(e) => setTourneyJoinForm({...tourneyJoinForm, id: e.target.value})} 
+                required 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-mono uppercase" 
+              />
+              <button type="submit" className="w-full bg-amber-500 text-black font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">Rejoindre</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isSuperAdminAddGameOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-slate-900 border border-fuchsia-500/40 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-fuchsia-400">SuperAdmin - Ajouter Jeu</h3>
+              <button onClick={() => setIsSuperAdminAddGameOpen(false)} className="text-slate-400">✕</button>
+            </div>
+            <form onSubmit={handleAdminAddGame} className="space-y-3">
+              <input 
+                type="text" 
+                placeholder="Nom du jeu..." 
+                value={adminGameForm.name} 
+                onChange={(e) => setAdminGameForm({...adminGameForm, name: e.target.value})} 
+                required 
+                className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white" 
+              />
+              <button type="submit" className="w-full bg-fuchsia-500 text-white font-extrabold py-3 rounded-xl text-xs uppercase cursor-pointer">Publier</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isFullHistoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-slate-900 border border-white/15 rounded-3xl p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="font-black text-sm uppercase text-white">Historique Intégral</h3>
+              <button onClick={() => setIsFullHistoryModalOpen(false)} className="text-slate-400">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {allMatches.map((m) => (
+                <div key={m.id} className="p-3 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-cyan-400">{m.category}</span>
+                    <p className="text-white font-semibold mt-0.5">{m.p1} vs {m.p2}</p>
+                  </div>
+                  <span className={`font-mono font-black ${m.winner === user.name ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {m.winner === user.name ? 'VICTOIRE' : 'DÉFAITE'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM NAVIGATION BAR (3 ET 3 ÉQUILIBRÉS) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#07070A]/95 backdrop-blur-xl border-t border-white/10 px-4 py-2.5">
+        <div className="max-w-md mx-auto flex items-center justify-around">
+          
+          <button 
+            onClick={() => setCurrentScreen('home')}
+            className={`flex flex-col items-center space-y-1 transition cursor-pointer ${currentScreen === 'home' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <Swords className="w-5 h-5" style={{ color: currentScreen === 'home' ? user.themeColor.hex : undefined }} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Accueil</span>
+          </button>
+
+          <button 
+            onClick={() => setCurrentScreen('leagues')}
+            className={`flex flex-col items-center space-y-1 transition cursor-pointer ${currentScreen === 'leagues' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <ShieldCheck className="w-5 h-5" style={{ color: currentScreen === 'leagues' ? user.themeColor.hex : undefined }} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Ligue</span>
+          </button>
+
+          <button 
+            onClick={() => setCurrentScreen('tournaments')}
+            className={`flex flex-col items-center space-y-1 transition cursor-pointer ${currentScreen === 'tournaments' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <Trophy className="w-5 h-5" style={{ color: currentScreen === 'tournaments' ? user.themeColor.hex : undefined }} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Coupe</span>
+          </button>
+
+          <button 
+            onClick={() => setCurrentScreen('games')}
+            className={`flex flex-col items-center space-y-1 transition cursor-pointer ${currentScreen === 'games' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <Gamepad2 className="w-5 h-5" style={{ color: currentScreen === 'games' ? user.themeColor.hex : undefined }} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Jeux</span>
+          </button>
+
+          <button 
+            onClick={() => setCurrentScreen('stats')}
+            className={`flex flex-col items-center space-y-1 transition cursor-pointer ${currentScreen === 'stats' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <BarChart3 className="w-5 h-5" style={{ color: currentScreen === 'stats' ? user.themeColor.hex : undefined }} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Stats</span>
+          </button>
+
+          <button 
+            onClick={() => { setCurrentScreen('profile'); setIsSettingsOpen(false); }}
+            className={`flex flex-col items-center space-y-1 transition cursor-pointer ${currentScreen === 'profile' ? 'text-white' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            <User className="w-5 h-5" style={{ color: currentScreen === 'profile' ? user.themeColor.hex : undefined }} />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Profil</span>
+          </button>
+
+        </div>
+      </nav>
+
+    </div>
+  );
+}
+
