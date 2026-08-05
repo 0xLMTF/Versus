@@ -1314,11 +1314,17 @@ export default function VersusApp() {
               <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-2">
                 <span className="text-[10px] text-slate-500 font-bold uppercase">💀 Pire Adversaire</span>
                 <div className="flex items-center space-x-2">
-                  <img src={profilesDB[0].avatar} className="w-8 h-8 rounded-lg object-cover" alt="worst" />
-                  <div>
-                    <p className="text-xs font-bold text-white">{nemesis?.name || profilesDB[0].name}</p>
-                    <p className="text-[10px] text-rose-400 font-mono">{nemesis?.count || 0} défaites</p>
-                  </div>
+                  {profilesDB.length > 0 ? (
+  <>
+    <img src={profilesDB[0]?.avatar} className="w-8 h-8 rounded-lg object-cover" alt="worst" />
+    <div>
+      <p className="text-xs font-bold text-white">{nemesis?.name || profilesDB[0]?.name}</p>
+      <p className="text-[10px] text-rose-400 font-mono">{nemesis?.count || 0} défaites</p>
+    </div>
+  </>
+) : (
+  <p className="text-[11px] text-slate-500">Ajoute des amis pour voir ton pire adversaire</p>
+)}
                 </div>
               </div>
             </div>
