@@ -11,7 +11,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
 
-import { initDb, seedDb } from './db.js';
+import { pool, initDb, seedDb } from './db.js';
 import authRoutes         from './routes/auth.js';
 import userRoutes         from './routes/users.js';
 import matchRoutes        from './routes/matches.js';
@@ -24,12 +24,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.PORT || '3001');
 
 // ── Bootstrap DB ──────────────────────────────
-const db = initDb();
+await initDb();
 // Seed si la DB est vide (premier lancement)
-const catCount = db.prepare('SELECT COUNT(*) as n FROM categories').get().n;
-if (catCount === 0) {
+const { rows: catCountRows } = await pool.query('SELECT COUNT(*)::int as n FROM categories');
+if (catCountRows[0].n === 0) {
   console.log('📦 Première initialisation — seed des données...');
-  await seedDb(db);
+  await seedDb();
 }
 
 // ── Dossier uploads ───────────────────────────
@@ -102,7 +102,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`\n🎮 VERSUS API démarrée sur http://localhost:${PORT}`);
   console.log(`   Env     : ${process.env.NODE_ENV}`);
-  console.log(`   DB      : ${process.env.DB_PATH || './versus.db'}`);
+  console.log(`   DB      : PostgreSQL (${process.env.DATABASE_URL ? 'connectée' : '⚠️ DATABASE_URL manquante'})`);
   console.log(`   CORS    : ${process.env.CORS_ORIGIN}`);
   console.log('\n✅ Routes disponibles :');
   console.log('   POST   /api/auth/register');
