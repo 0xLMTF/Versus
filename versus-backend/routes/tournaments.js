@@ -1,7 +1,7 @@
 // ── Tournament (Cup) routes — /api/cups ───────
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { getDb } from '../db.js';
+import { pool } from '../db.js';
 
 const router = Router();
 router.use(authenticate);
@@ -26,73 +26,78 @@ function buildEmptyBracket(members) {
 }
 
 // GET /api/cups — mes coupes
-router.get('/', (req, res) => {
-  const db = getDb();
-  const cups = db.prepare(`
-    SELECT c.* FROM cups c
-    JOIN cup_members cm ON cm.cup_id = c.id
-    WHERE cm.user_id = ?
-    ORDER BY c.created_at DESC
-  `).all(req.user.id);
-  res.json(cups.map(c => ({ ...c, bracket: JSON.parse(c.bracket_data || 'null') })));
+router.get('/', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT c.* FROM cups c
+     JOIN cup_members cm ON cm.cup_id = c.id
+     WHERE cm.user_id = $1
+     ORDER BY c.created_at DESC`,
+    [req.user.id],
+  );
+  res.json(rows.map(c => ({ ...c, bracket: JSON.parse(c.bracket_data || 'null') })));
 });
 
 // POST /api/cups — créer une coupe
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, is_multi = false, game_id, passcode, invitedTags = [] } = req.body;
   if (!name) return res.status(400).json({ error: 'name requis' });
 
-  const db = getDb();
   let id = genId();
-  while (db.prepare('SELECT id FROM cups WHERE id=?').get(id)) id = genId();
+  while ((await pool.query('SELECT id FROM cups WHERE id=$1', [id])).rows[0]) id = genId();
 
   // Membres initiaux = créateur + invités trouvés
-  const members = [{ name: db.prepare('SELECT name FROM users WHERE id=?').get(req.user.id)?.name }];
+  const { rows: meRows } = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+  const members = [{ name: meRows[0]?.name }];
   const invitedIds = [];
-  invitedTags.forEach(tag => {
-    const u = db.prepare('SELECT id,name FROM users WHERE tag=?').get(tag.toLowerCase());
+  for (const tag of invitedTags) {
+    const { rows } = await pool.query('SELECT id,name FROM users WHERE tag=$1', [tag.toLowerCase()]);
+    const u = rows[0];
     if (u) { members.push({ name: u.name }); invitedIds.push(u.id); }
-  });
+  }
 
   const bracket = buildEmptyBracket(members);
 
-  db.prepare(`INSERT INTO cups(id,name,creator_id,is_multi,game_id,passcode,bracket_data) VALUES(?,?,?,?,?,?,?)`)
-    .run(id, name, req.user.id, is_multi ? 1 : 0, game_id || null, passcode || null, JSON.stringify(bracket));
+  await pool.query(
+    `INSERT INTO cups(id,name,creator_id,is_multi,game_id,passcode,bracket_data) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+    [id, name, req.user.id, is_multi ? 1 : 0, game_id || null, passcode || null, JSON.stringify(bracket)],
+  );
 
-  db.prepare(`INSERT INTO cup_members(cup_id,user_id) VALUES(?,?)`).run(id, req.user.id);
-  invitedIds.forEach(uid => {
-    db.prepare(`INSERT OR IGNORE INTO cup_members(cup_id,user_id) VALUES(?,?)`).run(id, uid);
-    db.prepare(`INSERT INTO notifications(type,from_id,to_id,details,match_data) VALUES('FRIEND_REQUEST',?,?,?,?)`)
-      .run(req.user.id, uid, `Invitation à rejoindre la coupe "${name}"`, JSON.stringify({ cupId: id, passcode }));
-  });
+  await pool.query(`INSERT INTO cup_members(cup_id,user_id) VALUES($1,$2)`, [id, req.user.id]);
+  for (const uid of invitedIds) {
+    await pool.query(`INSERT INTO cup_members(cup_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [id, uid]);
+    await pool.query(
+      `INSERT INTO notifications(type,from_id,to_id,details,match_data) VALUES('FRIEND_REQUEST',$1,$2,$3,$4)`,
+      [req.user.id, uid, `Invitation à rejoindre la coupe "${name}"`, JSON.stringify({ cupId: id, passcode })],
+    );
+  }
 
   res.status(201).json({ id, name, bracket });
 });
 
 // POST /api/cups/join
-router.post('/join', (req, res) => {
+router.post('/join', async (req, res) => {
   const { id, passcode } = req.body;
-  const db = getDb();
-  const cup = db.prepare('SELECT * FROM cups WHERE id=?').get(id?.toUpperCase());
+  const { rows } = await pool.query('SELECT * FROM cups WHERE id=$1', [id?.toUpperCase()]);
+  const cup = rows[0];
   if (!cup) return res.status(404).json({ error: 'Coupe introuvable' });
   if (cup.passcode && cup.passcode !== passcode) return res.status(403).json({ error: 'Mot de passe incorrect' });
-  db.prepare(`INSERT OR IGNORE INTO cup_members(cup_id,user_id) VALUES(?,?)`).run(cup.id, req.user.id);
+  await pool.query(`INSERT INTO cup_members(cup_id,user_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, [cup.id, req.user.id]);
   res.json({ ok: true });
 });
 
 // GET /api/cups/:id
-router.get('/:id', (req, res) => {
-  const db = getDb();
-  const cup = db.prepare('SELECT * FROM cups WHERE id=?').get(req.params.id);
+router.get('/:id', async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM cups WHERE id=$1', [req.params.id]);
+  const cup = rows[0];
   if (!cup) return res.status(404).json({ error: 'Coupe introuvable' });
   res.json({ ...cup, bracket: JSON.parse(cup.bracket_data || 'null') });
 });
 
 // PATCH /api/cups/:id/bracket — mettre à jour un match du bracket
-router.patch('/:id/bracket', (req, res) => {
+router.patch('/:id/bracket', async (req, res) => {
   const { roundKey, matchId, winner, score } = req.body;
-  const db = getDb();
-  const cup = db.prepare('SELECT * FROM cups WHERE id=?').get(req.params.id);
+  const { rows } = await pool.query('SELECT * FROM cups WHERE id=$1', [req.params.id]);
+  const cup = rows[0];
   if (!cup) return res.status(404).json({ error: 'Coupe introuvable' });
 
   const isCreator = cup.creator_id === req.user.id;
@@ -118,10 +123,10 @@ router.patch('/:id/bracket', (req, res) => {
 
   // Statut finale
   if (bracket.final.winner) {
-    db.prepare('UPDATE cups SET status=? WHERE id=?').run('FINISHED', cup.id);
+    await pool.query('UPDATE cups SET status=$1 WHERE id=$2', ['FINISHED', cup.id]);
   }
 
-  db.prepare('UPDATE cups SET bracket_data=? WHERE id=?').run(JSON.stringify(bracket), cup.id);
+  await pool.query('UPDATE cups SET bracket_data=$1 WHERE id=$2', [JSON.stringify(bracket), cup.id]);
   res.json({ bracket });
 });
 

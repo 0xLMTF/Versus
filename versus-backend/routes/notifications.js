@@ -1,62 +1,63 @@
 // ── Notification routes — /api/notifications ──
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { getDb } from '../db.js';
+import { pool } from '../db.js';
 
 const router = Router();
 router.use(authenticate);
 
 // GET /api/notifications?status=PENDING
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const { status } = req.query;
-  const db = getDb();
-  let where = 'WHERE n.to_id = ?';
+  let where = 'WHERE n.to_id = $1';
   const params = [req.user.id];
-  if (status) { where += ' AND n.status = ?'; params.push(status); }
+  if (status) { params.push(status); where += ` AND n.status = $${params.length}`; }
 
-  const notifs = db.prepare(`
-    SELECT n.*, u.name as from_name, u.avatar_url as from_avatar
-    FROM notifications n
-    LEFT JOIN users u ON u.id = n.from_id
-    ${where}
-    ORDER BY n.created_at DESC
-    LIMIT 50
-  `).all(...params);
+  const { rows } = await pool.query(
+    `SELECT n.*, u.name as from_name, u.avatar_url as from_avatar
+     FROM notifications n
+     LEFT JOIN users u ON u.id = n.from_id
+     ${where}
+     ORDER BY n.created_at DESC
+     LIMIT 50`,
+    params,
+  );
 
-  res.json(notifs.map(n => ({
+  res.json(rows.map(n => ({
     ...n,
     match_data: n.match_data ? JSON.parse(n.match_data) : null,
   })));
 });
 
 // GET /api/notifications/count — badge counter
-router.get('/count', (req, res) => {
-  const db = getDb();
-  const { count } = db.prepare(`SELECT COUNT(*) as count FROM notifications WHERE to_id=? AND status='PENDING'`).get(req.user.id);
-  res.json({ count });
+router.get('/count', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int as count FROM notifications WHERE to_id=$1 AND status='PENDING'`,
+    [req.user.id],
+  );
+  res.json({ count: rows[0].count });
 });
 
 // PATCH /api/notifications/:id/read — marquer comme lu
-router.patch('/:id/read', (req, res) => {
-  const db = getDb();
-  db.prepare(`UPDATE notifications SET status='READ' WHERE id=? AND to_id=?`).run(req.params.id, req.user.id);
+router.patch('/:id/read', async (req, res) => {
+  await pool.query(`UPDATE notifications SET status='READ' WHERE id=$1 AND to_id=$2`, [req.params.id, req.user.id]);
   res.json({ ok: true });
 });
 
 // PATCH /api/notifications/read-all
-router.patch('/read-all', (req, res) => {
-  const db = getDb();
-  db.prepare(`UPDATE notifications SET status='READ' WHERE to_id=? AND status='PENDING'`).run(req.user.id);
+router.patch('/read-all', async (req, res) => {
+  await pool.query(`UPDATE notifications SET status='READ' WHERE to_id=$1 AND status='PENDING'`, [req.user.id]);
   res.json({ ok: true });
 });
 
 // POST /api/notifications/proof-request — demander une preuve
-router.post('/proof-request', (req, res) => {
+router.post('/proof-request', async (req, res) => {
   const { targetUserId, matchId, message } = req.body;
   if (!targetUserId) return res.status(400).json({ error: 'targetUserId requis' });
-  const db = getDb();
-  db.prepare(`INSERT INTO notifications(type,from_id,to_id,details,match_data) VALUES('PROOF_REQUEST',?,?,?,?)`)
-    .run(req.user.id, targetUserId, message || 'Preuve demandée', JSON.stringify({ matchId }));
+  await pool.query(
+    `INSERT INTO notifications(type,from_id,to_id,details,match_data) VALUES('PROOF_REQUEST',$1,$2,$3,$4)`,
+    [req.user.id, targetUserId, message || 'Preuve demandée', JSON.stringify({ matchId })],
+  );
   res.status(201).json({ ok: true });
 });
 
