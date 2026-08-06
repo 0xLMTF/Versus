@@ -1,29 +1,34 @@
 // ─────────────────────────────────────────────
-// VERSUS — Initialisation base de données SQLite
+// VERSUS — Initialisation base de données PostgreSQL
 // ─────────────────────────────────────────────
-import Database from 'better-sqlite3';
-import { readFileSync } from 'fs';
-import path from 'path';
+import pg from 'pg';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const DB_PATH = process.env.DB_PATH || './versus.db';
+const { Pool } = pg;
 
-export function getDb() {
-  const db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  return db;
-}
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }, // requis par Render/Neon/Supabase
+});
+
+pool.connect()
+  .then((client) => {
+    console.log('✅ PostgreSQL connecté');
+    client.release();
+  })
+  .catch((err) => {
+    console.error('❌ PostgreSQL erreur :', err.message);
+  });
 
 // ── Schéma complet ────────────────────────────
-export function initDb() {
-  const db = getDb();
+export async function initDb() {
+  await pool.query(`
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-  db.exec(`
     -- ── Utilisateurs ─────────────────────────
     CREATE TABLE IF NOT EXISTS users (
-      id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       name        TEXT NOT NULL,
       tag         TEXT NOT NULL UNIQUE,
       password    TEXT NOT NULL,        -- bcrypt hash
@@ -34,17 +39,17 @@ export function initDb() {
       losses      INTEGER DEFAULT 0,
       streak      INTEGER DEFAULT 0,
       theme_color TEXT DEFAULT 'cyan',
-      created_at  TEXT DEFAULT (datetime('now')),
-      updated_at  TEXT DEFAULT (datetime('now'))
+      created_at  TIMESTAMPTZ DEFAULT now(),
+      updated_at  TIMESTAMPTZ DEFAULT now()
     );
 
     -- ── Relations d'amitié ───────────────────
     CREATE TABLE IF NOT EXISTS friendships (
-      id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       friend_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       status      TEXT DEFAULT 'PENDING', -- PENDING | ACCEPTED | BLOCKED
-      created_at  TEXT DEFAULT (datetime('now')),
+      created_at  TIMESTAMPTZ DEFAULT now(),
       UNIQUE(user_id, friend_id)
     );
 
@@ -54,23 +59,48 @@ export function initDb() {
       name      TEXT NOT NULL,
       icon      TEXT,
       cat_color TEXT DEFAULT '#00F2FE',
-      desc      TEXT,
+      "desc"    TEXT,
       sort_order INTEGER DEFAULT 0
     );
 
     -- ── Jeux ────────────────────────────────
     CREATE TABLE IF NOT EXISTS games (
-      id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       name        TEXT NOT NULL,
       category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
       icon        TEXT,
       created_by  TEXT REFERENCES users(id),
-      created_at  TEXT DEFAULT (datetime('now'))
+      created_at  TIMESTAMPTZ DEFAULT now()
+    );
+
+    -- ── Ligues (créées avant matches pour la FK) ──
+    CREATE TABLE IF NOT EXISTS leagues (
+      id              TEXT PRIMARY KEY,    -- ex: LIGUE-8842
+      name            TEXT NOT NULL,
+      creator_id      TEXT NOT NULL REFERENCES users(id),
+      discipline      TEXT DEFAULT 'multi', -- multi | single
+      season          TEXT DEFAULT 'Saison 1',
+      passcode        TEXT,
+      is_active       INTEGER DEFAULT 1,
+      created_at      TIMESTAMPTZ DEFAULT now()
+    );
+
+    -- ── Coupes (créées avant matches pour la FK) ──
+    CREATE TABLE IF NOT EXISTS cups (
+      id          TEXT PRIMARY KEY,   -- ex: COUPE-9901
+      name        TEXT NOT NULL,
+      creator_id  TEXT NOT NULL REFERENCES users(id),
+      is_multi    INTEGER DEFAULT 0,
+      game_id     TEXT REFERENCES games(id),
+      passcode    TEXT,
+      status      TEXT DEFAULT 'ONGOING', -- ONGOING | FINISHED
+      bracket_data TEXT,              -- JSON du bracket complet
+      created_at  TIMESTAMPTZ DEFAULT now()
     );
 
     -- ── Matchs ───────────────────────────────
     CREATE TABLE IF NOT EXISTS matches (
-      id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       p1_id       TEXT NOT NULL REFERENCES users(id),
       p2_id       TEXT NOT NULL REFERENCES users(id),
       winner_id   TEXT REFERENCES users(id),
@@ -83,20 +113,8 @@ export function initDb() {
       cup_id      TEXT REFERENCES cups(id),
       status      TEXT DEFAULT 'CONFIRMED',  -- PENDING | CONFIRMED | DISPUTED | CANCELLED
       elo_delta   INTEGER DEFAULT 0,
-      played_at   TEXT DEFAULT (datetime('now')),
-      created_at  TEXT DEFAULT (datetime('now'))
-    );
-
-    -- ── Ligues ───────────────────────────────
-    CREATE TABLE IF NOT EXISTS leagues (
-      id              TEXT PRIMARY KEY,    -- ex: LIGUE-8842
-      name            TEXT NOT NULL,
-      creator_id      TEXT NOT NULL REFERENCES users(id),
-      discipline      TEXT DEFAULT 'multi', -- multi | single
-      season          TEXT DEFAULT 'Saison 1',
-      passcode        TEXT,
-      is_active       INTEGER DEFAULT 1,
-      created_at      TEXT DEFAULT (datetime('now'))
+      played_at   TIMESTAMPTZ DEFAULT now(),
+      created_at  TIMESTAMPTZ DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS league_games (
@@ -109,21 +127,8 @@ export function initDb() {
       league_id  TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
       user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       role       TEXT DEFAULT 'MEMBER',  -- OWNER | MEMBER
-      joined_at  TEXT DEFAULT (datetime('now')),
+      joined_at  TIMESTAMPTZ DEFAULT now(),
       PRIMARY KEY (league_id, user_id)
-    );
-
-    -- ── Coupes (tournois bracket) ────────────
-    CREATE TABLE IF NOT EXISTS cups (
-      id          TEXT PRIMARY KEY,   -- ex: COUPE-9901
-      name        TEXT NOT NULL,
-      creator_id  TEXT NOT NULL REFERENCES users(id),
-      is_multi    INTEGER DEFAULT 0,
-      game_id     TEXT REFERENCES games(id),
-      passcode    TEXT,
-      status      TEXT DEFAULT 'ONGOING', -- ONGOING | FINISHED
-      bracket_data TEXT,              -- JSON du bracket complet
-      created_at  TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS cup_members (
@@ -134,7 +139,7 @@ export function initDb() {
 
     -- ── Notifications ────────────────────────
     CREATE TABLE IF NOT EXISTS notifications (
-      id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       type        TEXT NOT NULL,  -- MATCH_CLAIM | FRIEND_REQUEST | MATCH_ACCEPTED | BADGE_UNLOCKED
       from_id     TEXT REFERENCES users(id),
       to_id       TEXT NOT NULL REFERENCES users(id),
@@ -142,35 +147,35 @@ export function initDb() {
       status      TEXT DEFAULT 'PENDING', -- PENDING | ACCEPTED | REFUSED | READ
       proof_url   TEXT,
       match_data  TEXT,           -- JSON des métadonnées du match
-      created_at  TEXT DEFAULT (datetime('now'))
+      created_at  TIMESTAMPTZ DEFAULT now()
     );
 
     -- ── Badges obtenus ───────────────────────
     CREATE TABLE IF NOT EXISTS user_badges (
       user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       badge_id   TEXT NOT NULL,
-      earned_at  TEXT DEFAULT (datetime('now')),
+      earned_at  TIMESTAMPTZ DEFAULT now(),
       PRIMARY KEY (user_id, badge_id)
     );
 
     -- ── Évaluations par catégorie (H2H) ──────
     CREATE TABLE IF NOT EXISTS category_ratings (
-      id          TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
+      id          TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       from_id     TEXT NOT NULL REFERENCES users(id),
       to_id       TEXT NOT NULL REFERENCES users(id),
       category_id TEXT NOT NULL REFERENCES categories(id),
       rating      INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-      updated_at  TEXT DEFAULT (datetime('now')),
+      updated_at  TIMESTAMPTZ DEFAULT now(),
       UNIQUE(from_id, to_id, category_id)
     );
 
     -- ── Sessions (refresh tokens) ────────────
     CREATE TABLE IF NOT EXISTS sessions (
-      id           TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(8)))),
-      user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      id            TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       refresh_token TEXT NOT NULL UNIQUE,
-      expires_at   TEXT NOT NULL,
-      created_at   TEXT DEFAULT (datetime('now'))
+      expires_at    TIMESTAMPTZ NOT NULL,
+      created_at    TIMESTAMPTZ DEFAULT now()
     );
 
     -- ── Index pour performances ───────────────
@@ -184,12 +189,11 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_friendships_user  ON friendships(user_id);
   `);
 
-  console.log('✅ Schéma SQLite initialisé');
-  return db;
+  console.log('✅ Schéma PostgreSQL initialisé');
 }
 
 // ── Seed — données initiales ─────────────────
-export async function seedDb(db) {
+export async function seedDb() {
   const bcrypt = (await import('bcryptjs')).default;
 
   // Catégories (alignées avec le front)
@@ -199,8 +203,13 @@ export async function seedDb(db) {
     { id: 'mind',       name: 'Réflexion & Stratégie', icon: '🧠', cat_color: '#8B5CF6', desc: 'Stratégie, cartes, cerveaux' },
     { id: 'videogames', name: 'Jeux Vidéo',            icon: '🎮', cat_color: '#00F2FE', desc: 'Console, PC, mobile' },
   ];
-  const insertCat = db.prepare(`INSERT OR IGNORE INTO categories(id,name,icon,cat_color,desc,sort_order) VALUES(?,?,?,?,?,?)`);
-  cats.forEach((c, i) => insertCat.run(c.id, c.name, c.icon, c.cat_color, c.desc, i));
+  for (const [i, c] of cats.entries()) {
+    await pool.query(
+      `INSERT INTO categories(id,name,icon,cat_color,"desc",sort_order) VALUES($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (id) DO NOTHING`,
+      [c.id, c.name, c.icon, c.cat_color, c.desc, i],
+    );
+  }
 
   // Jeux (ids stables pour le front)
   const games = [
@@ -221,93 +230,43 @@ export async function seedDb(db) {
     { id: 'g_rl', name: 'Rocket League', category_id: 'videogames' },
     { id: 'g_tekken', name: 'Tekken 8', category_id: 'videogames' },
   ];
-  const insertGame = db.prepare(`INSERT OR IGNORE INTO games(id,name,category_id) VALUES(?,?,?)`);
-  games.forEach((g) => insertGame.run(g.id, g.name, g.category_id));
+  for (const g of games) {
+    await pool.query(
+      `INSERT INTO games(id,name,category_id) VALUES($1,$2,$3) ON CONFLICT (id) DO NOTHING`,
+      [g.id, g.name, g.category_id],
+    );
+  }
 
-  // Comptes démo (password: versus123) — utiles pour tester l'API sans casser le front mock
+  // Comptes démo (password: versus123)
   const demoPassword = process.env.SUPERADMIN_PASSWORD || 'versus123';
   const hash = await bcrypt.hash(demoPassword, 10);
   const demoUsers = [
-    {
-      id: 'usr_alex',
-      name: 'Alex',
-      tag: '@alex_god',
-      role: 'SUPERADMIN',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-      theme: 'cyan',
-      elo: 2150,
-      wins: 42,
-      losses: 24,
-      streak: 5,
-    },
-    {
-      id: 'usr_clement',
-      name: 'Clément',
-      tag: '@clement_boss',
-      role: 'USER',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
-      theme: 'fuchsia',
-      elo: 2090,
-      wins: 38,
-      losses: 35,
-      streak: 7,
-    },
-    {
-      id: 'usr_hugo',
-      name: 'Hugo',
-      tag: '@hugo_fast',
-      role: 'USER',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80',
-      theme: 'emerald',
-      elo: 1850,
-      wins: 32,
-      losses: 12,
-      streak: 4,
-    },
-    {
-      id: 'usr_sarah',
-      name: 'Sarah',
-      tag: '@sarah_smash',
-      role: 'USER',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-      theme: 'purple',
-      elo: 1980,
-      wins: 15,
-      losses: 15,
-      streak: 0,
-    },
-    {
-      id: 'usr_thomas',
-      name: 'Thomas',
-      tag: '@thomas_pro',
-      role: 'USER',
-      avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&auto=format&fit=crop&q=80',
-      theme: 'rose',
-      elo: 1720,
-      wins: 9,
-      losses: 21,
-      streak: 0,
-    },
+    { id: 'usr_alex', name: 'Alex', tag: '@alex_god', role: 'SUPERADMIN', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80', theme: 'cyan', elo: 2150, wins: 42, losses: 24, streak: 5 },
+    { id: 'usr_clement', name: 'Clément', tag: '@clement_boss', role: 'USER', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80', theme: 'fuchsia', elo: 2090, wins: 38, losses: 35, streak: 7 },
+    { id: 'usr_hugo', name: 'Hugo', tag: '@hugo_fast', role: 'USER', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80', theme: 'emerald', elo: 1850, wins: 32, losses: 12, streak: 4 },
+    { id: 'usr_sarah', name: 'Sarah', tag: '@sarah_smash', role: 'USER', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80', theme: 'purple', elo: 1980, wins: 15, losses: 15, streak: 0 },
+    { id: 'usr_thomas', name: 'Thomas', tag: '@thomas_pro', role: 'USER', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=300&auto=format&fit=crop&q=80', theme: 'rose', elo: 1720, wins: 9, losses: 21, streak: 0 },
   ];
 
-  const insertUser = db.prepare(`
-    INSERT OR IGNORE INTO users(id,name,tag,password,avatar_url,role,elo,wins,losses,streak,theme_color)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?)
-  `);
   for (const u of demoUsers) {
-    insertUser.run(
-      u.id, u.name, u.tag.toLowerCase(), hash, u.avatar,
-      u.role, u.elo, u.wins, u.losses, u.streak, u.theme,
+    await pool.query(
+      `INSERT INTO users(id,name,tag,password,avatar_url,role,elo,wins,losses,streak,theme_color)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT (id) DO NOTHING`,
+      [u.id, u.name, u.tag.toLowerCase(), hash, u.avatar, u.role, u.elo, u.wins, u.losses, u.streak, u.theme],
     );
   }
 
   // Amis acceptés entre Alex et les autres
-  const insertFriend = db.prepare(`
-    INSERT OR IGNORE INTO friendships(user_id, friend_id, status) VALUES(?,?, 'ACCEPTED')
-  `);
   for (const friendId of ['usr_clement', 'usr_hugo', 'usr_sarah', 'usr_thomas']) {
-    insertFriend.run('usr_alex', friendId);
-    insertFriend.run(friendId, 'usr_alex');
+    await pool.query(
+      `INSERT INTO friendships(user_id, friend_id, status) VALUES($1,$2,'ACCEPTED') ON CONFLICT DO NOTHING`,
+      ['usr_alex', friendId],
+    );
+    await pool.query(
+      `INSERT INTO friendships(user_id, friend_id, status) VALUES($1,$2,'ACCEPTED') ON CONFLICT DO NOTHING`,
+      [friendId, 'usr_alex'],
+    );
   }
 
   console.log('✅ Données initiales insérées (cats + games + 5 comptes démo)');
@@ -319,14 +278,13 @@ const wantsInit = process.argv.includes('--init');
 const wantsSeed = process.argv.includes('--seed');
 
 if (wantsInit || wantsSeed) {
-  const db = initDb();
+  await initDb();
   if (wantsSeed || wantsInit) {
-    // Toujours seed si --seed ; au premier --init seul aussi si DB vide
-    const catCount = db.prepare('SELECT COUNT(*) as n FROM categories').get().n;
-    if (wantsSeed || catCount === 0) {
-      await seedDb(db);
+    const { rows } = await pool.query('SELECT COUNT(*)::int AS n FROM categories');
+    if (wantsSeed || rows[0].n === 0) {
+      await seedDb();
     }
   }
-  db.close();
+  await pool.end();
   process.exit(0);
 }
