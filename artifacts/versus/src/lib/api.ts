@@ -162,6 +162,22 @@ export async function updateMe(body: {
 }
 
 // ── Amis ───────────────────────────────────────
+export type PublicUserPreview = {
+  id: string;
+  name: string;
+  tag: string;
+  avatar_url: string | null;
+  elo: number;
+  theme_color: string;
+};
+
+/** Route publique, sans auth — pour l'écran de connexion (avatars à jour des comptes démo). */
+export async function getPublicByTags(tags: string[]): Promise<PublicUserPreview[]> {
+  if (!tags.length) return [];
+  const res = await fetch(`${BASE}/api/users/public/by-tag?tags=${encodeURIComponent(tags.join(','))}`);
+  return parse<PublicUserPreview[]>(res);
+}
+
 export async function searchUsers(query: string): Promise<FriendSearchResult[]> {
   if (query.trim().length < 2) return [];
   return apiGet<FriendSearchResult[]>(`/api/users/search?q=${encodeURIComponent(query.trim())}`);

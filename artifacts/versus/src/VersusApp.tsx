@@ -36,11 +36,15 @@ import {
   updateMe,
   searchUsers,
   sendFriendRequest,
+  getFriends,
+  getNotifications,
+  markNotificationRead,
+  respondFriendRequest,
   type ApiUser,
   type FriendSearchResult,
 } from '@/lib/api';
-import { isSeedDemoAccount, mapApiUserToAccount } from '@/lib/mapUser';
-import type { Account } from '@/types';
+import { isSeedDemoAccount, mapApiUserToAccount, mapApiUserToRivalProfile } from '@/lib/mapUser';
+import type { Account, RivalProfile, AppNotification } from '@/types';
 
 // ─────────────────────────────────────────────
 // MAIN APP (screens + state — auth via API)
@@ -64,7 +68,7 @@ export default function VersusApp() {
   // ── Data ──
   const [categories, setCategories] = useState(CATEGORIES);
   const [profilesDB, setProfilesDB] = useState(INITIAL_PROFILES_DB);
-  const [selectedRival, setSelectedRival] = useState(INITIAL_PROFILES_DB[0]);
+  const [selectedRival, setSelectedRival] = useState<RivalProfile | null>(INITIAL_PROFILES_DB[0]);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [leagues, setLeagues] = useState(INITIAL_LEAGUES);
   const [selectedLeagueIndex, setSelectedLeagueIndex] = useState(0);
@@ -106,7 +110,7 @@ export default function VersusApp() {
   const proofImageRef = useRef<HTMLInputElement>(null);
   const leagueProofRef = useRef<HTMLInputElement>(null);
 
-  const applyAuthenticatedUser = (apiUser: ApiUser) => {
+  const applyAuthenticatedUser = async (apiUser: ApiUser) => {
     const account = mapApiUserToAccount(apiUser);
     setLoggedInUser(account);
     setUser(account);
@@ -128,15 +132,36 @@ export default function VersusApp() {
       setLeagues(INITIAL_LEAGUES);
       setTournaments(INITIAL_TOURNAMENTS);
     } else {
-      // Nouveau compte : UI propre (pas l'historique démo d'Alex)
-      setProfilesDB([]);
-      setSelectedRival(INITIAL_PROFILES_DB[0]);
+      // Vrai compte : on part propre puis on charge les vraies données API
       setAllMatches([]);
-      setNotifications([]);
       setLeagues([]);
       setTournaments([]);
       setSelectedLeagueIndex(0);
       setSelectedTourneyIndex(0);
+      await refreshFriendsAndNotifications();
+    }
+  };
+
+  // Recharge amis + notifications depuis l'API (compte réel uniquement)
+  const refreshFriendsAndNotifications = async () => {
+    try {
+      const [friends, notifs] = await Promise.all([getFriends(), getNotifications()]);
+      const mappedFriends = friends.map(mapApiUserToRivalProfile);
+      setProfilesDB(mappedFriends);
+      setSelectedRival(prev => (prev && mappedFriends.some(f => f.id === prev.id)) ? prev : (mappedFriends[0] || null));
+      setNotifications(notifs.map((n): AppNotification => ({
+        id: n.id,
+        type: n.type,
+        from: n.from_name || '',
+        fromId: n.from_id || '',
+        details: n.details,
+        timestamp: new Date(n.created_at).toLocaleString('fr-FR'),
+        status: n.status,
+        proofUrl: n.proof_url || null,
+        matchData: (n.match_data as AppNotification['matchData']) ?? null,
+      })));
+    } catch {
+      // silencieux — l'UI retombe sur des listes vides
     }
   };
 
@@ -157,7 +182,7 @@ export default function VersusApp() {
       }
       try {
         const me = await fetchMe();
-        if (!cancelled) applyAuthenticatedUser(me);
+        if (!cancelled) await applyAuthenticatedUser(me);
       } catch {
         // token mort
       } finally {
@@ -238,7 +263,7 @@ export default function VersusApp() {
 
   // H2H matches vs selected rival
   const rivalMatches = useMemo(() =>
-    allMatches.filter(m => (m.p1 === user.name && m.p2 === selectedRival.name) || (m.p2 === user.name && m.p1 === selectedRival.name)),
+    !selectedRival ? [] : allMatches.filter(m => (m.p1 === user.name && m.p2 === selectedRival.name) || (m.p2 === user.name && m.p1 === selectedRival.name)),
     [allMatches, user.name, selectedRival]
   );
 
@@ -353,8 +378,20 @@ export default function VersusApp() {
     setMatchForm(f => ({ ...f, scoreNote: '', proofImage: null }));
   };
 
-  const handleAcceptNotif = (notifId: string) => {
+  const handleAcceptNotif = async (notifId: string) => {
     const notif = notifications.find(n => n.id === notifId);
+    if (notif?.type === 'FRIEND_REQUEST' && notif.fromId) {
+      try {
+        await respondFriendRequest(notif.fromId, 'ACCEPTED');
+        await markNotificationRead(notifId).catch(() => {});
+        await refreshFriendsAndNotifications();
+        showToast(`✅ Vous êtes maintenant amis avec ${notif.from} !`);
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "❌ Échec de l'acceptation");
+      }
+      return;
+    }
+    // Autres types (matchs, ligues...) : encore en local, branchement à venir
     setNotifications(notifications.map(n => n.id === notifId ? { ...n, status: 'ACCEPTED' } : n));
     if (notif?.matchData?.leagueId) {
       handleLeagueMatchFromNotif(notif);
@@ -362,7 +399,19 @@ export default function VersusApp() {
     showToast('✅ Match accepté et classement mis à jour !');
   };
 
-  const handleRejectNotif = (notifId: string) => {
+  const handleRejectNotif = async (notifId: string) => {
+    const notif = notifications.find(n => n.id === notifId);
+    if (notif?.type === 'FRIEND_REQUEST' && notif.fromId) {
+      try {
+        await respondFriendRequest(notif.fromId, 'BLOCKED');
+        await markNotificationRead(notifId).catch(() => {});
+        await refreshFriendsAndNotifications();
+        showToast('❌ Demande refusée.');
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : '❌ Échec du refus');
+      }
+      return;
+    }
     setNotifications(notifications.map(n => n.id === notifId ? { ...n, status: 'REJECTED' } : n));
     showToast('❌ Match refusé.');
   };
@@ -825,10 +874,10 @@ export default function VersusApp() {
               <button onClick={() => setViewingRivalDetail(true)}
                 className="w-full py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold text-slate-300 hover:bg-white/10 transition cursor-pointer flex items-center justify-center space-x-1.5">
                 <History className="w-3.5 h-3.5" />
-                <span>Voir l'historique complet vs {selectedRival.name}</span>
+                <span>Voir l'historique complet vs {selectedRival?.name}</span>
               </button>
 
-              <button onClick={() => { setMatchForm(f => ({ ...f, opponentId: selectedRival.id })); setModal('declare'); }}
+              <button onClick={() => { if (selectedRival) setMatchForm(f => ({ ...f, opponentId: selectedRival.id })); setModal('declare'); }}
                 style={{ backgroundColor: user.themeColor.hex }}
                 className="w-full py-3.5 px-4 rounded-2xl text-black font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center space-x-2 transition cursor-pointer hover:opacity-95 active:scale-95">
                 <Plus className="w-5 h-5 stroke-[3]" />
@@ -1723,7 +1772,7 @@ export default function VersusApp() {
       {/* ═══════════════════════════════════════
           RIVALRY DETAIL MODAL
       ═══════════════════════════════════════ */}
-      {viewingRivalDetail && (
+      {viewingRivalDetail && selectedRival && (
         <Modal onClose={() => setViewingRivalDetail(false)} borderColor="border-fuchsia-500/30">
           <ModalHeader title={`Rivalry vs ${selectedRival.name}`} onClose={() => setViewingRivalDetail(false)} color="text-fuchsia-400" />
           <div className="space-y-4">

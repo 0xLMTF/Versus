@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Loader2, LogIn, UserPlus } from 'lucide-react';
 import { Input } from '@/components/versus-ui';
 import { ACCOUNTS } from '@/data/seed';
-import { login, register, type ApiUser } from '@/lib/api';
+import { login, register, getPublicByTags, type ApiUser } from '@/lib/api';
 
 type Mode = 'login' | 'register';
 
@@ -18,6 +18,34 @@ export default function AuthScreen({ onSuccess, apiOnline }: Props) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [liveDemoAccounts, setLiveDemoAccounts] = useState(ACCOUNTS.slice(0, 3));
+
+  // Récupère les vraies infos (avatar, elo à jour) des comptes démo depuis
+  // l'API. Si offline ou en échec, on garde le mock local en fallback —
+  // le bouton reste utilisable dans les deux cas.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tags = ACCOUNTS.slice(0, 3).map((a) => a.tag);
+        const live = await getPublicByTags(tags);
+        if (cancelled || !live.length) return;
+        setLiveDemoAccounts(
+          ACCOUNTS.slice(0, 3).map((acc) => {
+            const match = live.find((u) => u.tag.toLowerCase() === acc.tag.toLowerCase());
+            return match
+              ? { ...acc, avatar: match.avatar_url || acc.avatar, elo: match.elo ?? acc.elo }
+              : acc;
+          }),
+        );
+      } catch {
+        // fallback silencieux sur ACCOUNTS local
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -166,7 +194,7 @@ export default function AuthScreen({ onSuccess, apiOnline }: Props) {
             Comptes démo (mdp: versus123)
           </p>
           <div className="space-y-2">
-            {ACCOUNTS.slice(0, 3).map((acc) => (
+            {liveDemoAccounts.map((acc) => (
               <button
                 key={acc.id}
                 type="button"

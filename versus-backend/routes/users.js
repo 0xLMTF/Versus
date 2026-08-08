@@ -5,9 +5,29 @@ import { authenticate } from '../middleware/auth.js';
 import { pool } from '../db.js';
 
 const router = Router();
-router.use(authenticate);
 
 const PUBLIC_FIELDS = 'id,name,tag,role,elo,wins,losses,streak,theme_color,avatar_url,is_private,created_at';
+
+// GET /api/users/public/by-tag?tags=@alex_god,@hugo_fast — avant authenticate :
+// utilisé par l'écran de connexion pour afficher des avatars à jour, sans
+// exposer les comptes privés.
+router.get('/public/by-tag', async (req, res) => {
+  const tags = String(req.query.tags || '')
+    .split(',')
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 10); // anti-abus
+  if (!tags.length) return res.json([]);
+
+  const { rows } = await pool.query(
+    `SELECT id,name,tag,avatar_url,elo,theme_color FROM users
+     WHERE tag = ANY($1::text[]) AND is_private = 0`,
+    [tags],
+  );
+  res.json(rows);
+});
+
+router.use(authenticate);
 
 // GET /api/users/me — profil actuel
 router.get('/me', async (req, res) => {
