@@ -102,6 +102,7 @@ corepack pnpm dev
 - [ ] Notifications réellement opérationnelles de bout en bout
 - [ ] Découper l'écran principal en composants indépendants
 - [ ] App mobile React Native / Expo
+- [ ] Assurer la confidentialité des informations stockées et la sécurité des comptes
 
 ---
 
