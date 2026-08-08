@@ -39,6 +39,7 @@ export async function initDb() {
       losses      INTEGER DEFAULT 0,
       streak      INTEGER DEFAULT 0,
       theme_color TEXT DEFAULT 'cyan',
+      is_private  INTEGER DEFAULT 0,
       created_at  TIMESTAMPTZ DEFAULT now(),
       updated_at  TIMESTAMPTZ DEFAULT now()
     );
@@ -187,6 +188,10 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_notifications_to  ON notifications(to_id);
     CREATE INDEX IF NOT EXISTS idx_league_members_u  ON league_members(user_id);
     CREATE INDEX IF NOT EXISTS idx_friendships_user  ON friendships(user_id);
+
+    -- Migration (ta base tourne déjà : CREATE TABLE IF NOT EXISTS ne touche
+    -- pas une table existante, donc on ajoute la colonne explicitement)
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_private INTEGER DEFAULT 0;
   `);
 
   console.log('✅ Schéma PostgreSQL initialisé');

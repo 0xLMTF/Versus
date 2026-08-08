@@ -17,7 +17,24 @@ export type ApiUser = {
   streak: number;
   theme_color: string;
   avatar_url: string | null;
+  is_private?: boolean;
   created_at?: string;
+};
+
+export type FriendSearchResult = ApiUser & { friend_status?: 'PENDING' | 'ACCEPTED' | 'BLOCKED' | null };
+
+export type ApiNotification = {
+  id: string;
+  type: 'MATCH_CLAIM' | 'FRIEND_REQUEST' | 'MATCH_ACCEPTED' | 'BADGE_UNLOCKED' | 'PROOF_REQUEST';
+  from_id: string | null;
+  from_name?: string;
+  from_avatar?: string;
+  to_id: string;
+  details: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REFUSED' | 'READ';
+  proof_url?: string;
+  match_data?: unknown;
+  created_at: string;
 };
 
 export type AuthResponse = {
@@ -139,8 +156,47 @@ export async function updateMe(body: {
   avatar_url?: string;
   theme_color?: string;
   password?: string;
+  is_private?: boolean;
 }): Promise<ApiUser> {
   return apiPatch<ApiUser>('/api/users/me', body);
+}
+
+// ── Amis ───────────────────────────────────────
+export async function searchUsers(query: string): Promise<FriendSearchResult[]> {
+  if (query.trim().length < 2) return [];
+  return apiGet<FriendSearchResult[]>(`/api/users/search?q=${encodeURIComponent(query.trim())}`);
+}
+
+export async function getFriends(): Promise<ApiUser[]> {
+  return apiGet<ApiUser[]>('/api/users/me/friends');
+}
+
+export async function sendFriendRequest(tag: string): Promise<{ ok: true }> {
+  return apiPost('/api/users/me/friends', { tag });
+}
+
+export async function respondFriendRequest(
+  friendId: string,
+  status: 'ACCEPTED' | 'BLOCKED',
+): Promise<{ ok: true }> {
+  return apiPatch(`/api/users/me/friends/${friendId}`, { status });
+}
+
+// ── Notifications ───────────────────────────────
+export async function getNotifications(status?: string): Promise<ApiNotification[]> {
+  return apiGet<ApiNotification[]>(`/api/notifications${status ? `?status=${status}` : ''}`);
+}
+
+export async function getNotificationCount(): Promise<{ count: number }> {
+  return apiGet('/api/notifications/count');
+}
+
+export async function markNotificationRead(id: string): Promise<{ ok: true }> {
+  return apiPatch(`/api/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead(): Promise<{ ok: true }> {
+  return apiPatch('/api/notifications/read-all');
 }
 
 export async function deleteAccount(password: string): Promise<void> {

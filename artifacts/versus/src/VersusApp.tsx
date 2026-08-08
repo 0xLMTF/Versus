@@ -34,7 +34,10 @@ import {
   healthCheck,
   logout as apiLogout,
   updateMe,
+  searchUsers,
+  sendFriendRequest,
   type ApiUser,
+  type FriendSearchResult,
 } from '@/lib/api';
 import { isSeedDemoAccount, mapApiUserToAccount } from '@/lib/mapUser';
 import type { Account } from '@/types';
@@ -73,6 +76,9 @@ export default function VersusApp() {
   // ── UI State ──
   const [selectedGameCatTab, setSelectedGameCatTab] = useState('sports');
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
+  const [friendSearchResults, setFriendSearchResults] = useState<FriendSearchResult[]>([]);
+  const [friendSearchLoading, setFriendSearchLoading] = useState(false);
+  const [sentRequestIds, setSentRequestIds] = useState<string[]>([]);
   const [editingCupMatch, setEditingCupMatch] = useState<any>(null);
   const [viewingMatch, setViewingMatch] = useState<any>(null);
   const [viewingRivalDetail, setViewingRivalDetail] = useState(false);
@@ -162,6 +168,38 @@ export default function VersusApp() {
       cancelled = true;
     };
   }, []);
+
+  // ── Recherche d'amis dynamique (debounce 300ms) ──
+  useEffect(() => {
+    const q = friendSearchQuery.trim();
+    if (q.length < 2) {
+      setFriendSearchResults([]);
+      setFriendSearchLoading(false);
+      return;
+    }
+    setFriendSearchLoading(true);
+    const handle = setTimeout(async () => {
+      try {
+        const results = await searchUsers(q);
+        setFriendSearchResults(results);
+      } catch {
+        setFriendSearchResults([]);
+      } finally {
+        setFriendSearchLoading(false);
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [friendSearchQuery]);
+
+  const handleSendFriendRequest = async (target: FriendSearchResult) => {
+    try {
+      await sendFriendRequest(target.tag);
+      setSentRequestIds(prev => [...prev, target.id]);
+      setToastMessage(`Demande envoyée à ${target.name}`);
+    } catch (e) {
+      setToastMessage(e instanceof Error ? e.message : "Échec de l'envoi");
+    }
+  };
 
   // ── Derived ──
   const allGames = useMemo(() => categories.flatMap(c => c.games.map(g => ({ ...g, catId: c.id, catName: c.name }))), [categories]);
@@ -1314,17 +1352,11 @@ export default function VersusApp() {
               <div className="p-4 rounded-2xl bg-slate-900 border border-white/10 space-y-2">
                 <span className="text-[10px] text-slate-500 font-bold uppercase">💀 Pire Adversaire</span>
                 <div className="flex items-center space-x-2">
-                  {profilesDB.length > 0 ? (
-  <>
-    <img src={profilesDB[0]?.avatar} className="w-8 h-8 rounded-lg object-cover" alt="worst" />
-    <div>
-      <p className="text-xs font-bold text-white">{nemesis?.name || profilesDB[0]?.name}</p>
-      <p className="text-[10px] text-rose-400 font-mono">{nemesis?.count || 0} défaites</p>
-    </div>
-  </>
-) : (
-  <p className="text-[11px] text-slate-500">Ajoute des amis pour voir ton pire adversaire</p>
-)}
+                  <img src={profilesDB[0].avatar} className="w-8 h-8 rounded-lg object-cover" alt="worst" />
+                  <div>
+                    <p className="text-xs font-bold text-white">{nemesis?.name || profilesDB[0].name}</p>
+                    <p className="text-[10px] text-rose-400 font-mono">{nemesis?.count || 0} défaites</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2157,31 +2189,52 @@ export default function VersusApp() {
           ADD FRIEND
       ═══════════════════════════════════════ */}
       {modal === 'add_friend' && (
-        <Modal onClose={() => setModal(null)} borderColor="border-cyan-500/30">
-          <ModalHeader title="Rechercher un Ami" onClose={() => setModal(null)} />
+        <Modal onClose={() => { setModal(null); setFriendSearchQuery(''); }} borderColor="border-cyan-500/30">
+          <ModalHeader title="Rechercher un Ami" onClose={() => { setModal(null); setFriendSearchQuery(''); }} />
           <div className="space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-              <Input placeholder="Nom ou @pseudo" value={friendSearchQuery}
-                onChange={e => setFriendSearchQuery(e.target.value)} className="pl-8" />
+              <Input placeholder="Nom ou @pseudo (2 caractères min)" value={friendSearchQuery}
+                onChange={e => setFriendSearchQuery(e.target.value)} className="pl-8" autoFocus />
             </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {profilesDB.filter(p => p.name.toLowerCase().includes(friendSearchQuery.toLowerCase()) || p.tag.toLowerCase().includes(friendSearchQuery.toLowerCase()))
-                .map(p => (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {friendSearchLoading && (
+                <p className="text-xs text-slate-500 text-center py-4">Recherche...</p>
+              )}
+              {!friendSearchLoading && friendSearchQuery.trim().length >= 2 && friendSearchResults.length === 0 && (
+                <p className="text-xs text-slate-500 text-center py-4">Aucun résultat pour "{friendSearchQuery}"</p>
+              )}
+              {!friendSearchLoading && friendSearchQuery.trim().length < 2 && (
+                <p className="text-xs text-slate-500 text-center py-4">Tape au moins 2 caractères pour chercher.</p>
+              )}
+              {!friendSearchLoading && friendSearchResults.map(p => {
+                const alreadySent = sentRequestIds.includes(p.id);
+                const alreadyFriend = p.friend_status === 'ACCEPTED';
+                const pendingFromThem = p.friend_status === 'PENDING';
+                return (
                   <div key={p.id} className="p-3 rounded-xl bg-slate-950 border border-white/5 flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
-                      <img src={p.avatar} className="w-8 h-8 rounded-lg object-cover" alt={p.name} />
+                      <img src={p.avatar_url || undefined} className="w-8 h-8 rounded-lg object-cover bg-slate-800" alt={p.name} />
                       <div>
                         <p className="font-bold text-white">{p.name}</p>
                         <p className="text-[10px] text-slate-500">{p.tag}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/30">Déjà ami</span>
+                    {alreadyFriend ? (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/30">Déjà ami</span>
+                    ) : alreadySent || pendingFromThem ? (
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/30">En attente</span>
+                    ) : (
+                      <button
+                        onClick={() => handleSendFriendRequest(p)}
+                        className="text-[10px] font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/30 cursor-pointer hover:bg-cyan-500/20 transition"
+                      >
+                        Ajouter
+                      </button>
+                    )}
                   </div>
-                ))}
-              {profilesDB.filter(p => p.name.toLowerCase().includes(friendSearchQuery.toLowerCase()) || p.tag.toLowerCase().includes(friendSearchQuery.toLowerCase())).length === 0 && (
-                <p className="text-xs text-slate-500 text-center py-4">Aucun résultat pour "{friendSearchQuery}"</p>
-              )}
+                );
+              })}
             </div>
           </div>
         </Modal>

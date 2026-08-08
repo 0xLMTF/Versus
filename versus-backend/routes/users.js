@@ -7,7 +7,7 @@ import { pool } from '../db.js';
 const router = Router();
 router.use(authenticate);
 
-const PUBLIC_FIELDS = 'id,name,tag,role,elo,wins,losses,streak,theme_color,avatar_url,created_at';
+const PUBLIC_FIELDS = 'id,name,tag,role,elo,wins,losses,streak,theme_color,avatar_url,is_private,created_at';
 
 // GET /api/users/me — profil actuel
 router.get('/me', async (req, res) => {
@@ -18,7 +18,7 @@ router.get('/me', async (req, res) => {
 
 // PATCH /api/users/me — mise à jour profil
 router.patch('/me', async (req, res) => {
-  const { name, avatar_url, theme_color, password } = req.body;
+  const { name, avatar_url, theme_color, password, is_private } = req.body;
 
   const updates = [];
   const params = [];
@@ -27,6 +27,7 @@ router.patch('/me', async (req, res) => {
   if (name)        { updates.push(`name = $${i++}`);        params.push(name); }
   if (avatar_url)  { updates.push(`avatar_url = $${i++}`);  params.push(avatar_url); }
   if (theme_color) { updates.push(`theme_color = $${i++}`); params.push(theme_color); }
+  if (typeof is_private === 'boolean') { updates.push(`is_private = $${i++}`); params.push(is_private ? 1 : 0); }
   if (password) {
     if (password.length < 6) return res.status(400).json({ error: 'Mot de passe trop court' });
     const hash = await bcrypt.hash(password, 12);
@@ -82,13 +83,23 @@ router.delete('/me', async (req, res) => {
   res.json({ ok: true, message: 'Compte fermé définitivement' });
 });
 
-// GET /api/users/search?q=tag_ou_nom — recherche d'amis
+// GET /api/users/search?q=tag_ou_nom — recherche dynamique (comptes publics uniquement)
 router.get('/search', async (req, res) => {
   const { q } = req.query;
   if (!q || q.length < 2) return res.status(400).json({ error: 'Query trop courte (2 chars min)' });
+
+  // Les comptes privés n'apparaissent jamais dans la recherche dynamique —
+  // seul un tag exact connu à l'avance (partagé "sur invitation") permet
+  // de les trouver, via POST /me/friends qui fait un lookup exact, pas ILIKE.
   const { rows } = await pool.query(
-    `SELECT ${PUBLIC_FIELDS} FROM users
-     WHERE (name ILIKE $1 OR tag ILIKE $1) AND id != $2
+    `SELECT u.${PUBLIC_FIELDS.split(',').join(', u.')},
+       f.status as friend_status
+     FROM users u
+     LEFT JOIN friendships f ON f.user_id = $2 AND f.friend_id = u.id
+     WHERE (u.name ILIKE $1 OR u.tag ILIKE $1)
+       AND u.id != $2
+       AND u.is_private = 0
+     ORDER BY u.name
      LIMIT 20`,
     [`%${q}%`, req.user.id],
   );
